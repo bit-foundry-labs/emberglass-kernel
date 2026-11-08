@@ -1,0 +1,57 @@
+name: QEMU boot smoke test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out kernel
+        uses: actions/checkout@v4
+
+      - name: Install emulator and ISO tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+
+      - name: Build verified boot ISO
+        run: make iso
+
+      - name: Boot kernel headlessly and verify serial READY
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=2s 20s \
+            qemu-system-x86_64 \
+              -m 256M \
+              -cdrom build/emberglass.iso \
+              -display none \
+              -serial file:build/serial.log \
+              -monitor none \
+              -no-reboot -no-shutdown
+          qemu_status=$?
+          set -e
+          printf "QEMU exit status: %s\n" "$qemu_status"
+          echo "--- Kernel serial output ---"
+          if [ -f build/serial.log ]; then
+            cat build/serial.log
+          else
+            echo "Missing serial log" >&2
+            exit 1
+          fi
+          if [ "$qemu_status" -ne 124 ] && [ "$qemu_status" -ne 0 ]; then
+            echo "QEMU crashed or could not start" >&2
+            exit 1
+          fi
+          grep -Fq "READY: original freestanding kernel entered successfully." build/serial.log
+
+      - name: Preserve boot log on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-serial-log
+          path: build/serial.log
+          if-no-files-found: ignore
