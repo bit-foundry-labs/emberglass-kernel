@@ -53,3 +53,9 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Emberglass build/emulator outputs
+build/
+.cache/
+*.iso
+limine-binary/

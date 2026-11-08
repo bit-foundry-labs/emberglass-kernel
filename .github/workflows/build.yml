@@ -1,0 +1,13 @@
+name: Kernel build and host tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build freestanding ELF
+        run: make check
+      - name: Host tests
+        run: make test
