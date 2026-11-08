@@ -21,6 +21,6 @@ test: | build
 iso: check
 	bash scripts/make_iso.sh
 run: iso
-	qemu-system-x86_64 -m 256M -cdrom build/emberglass.iso -serial stdio -no-reboot -no-shutdown
+	qemu-system-x86_64 -cpu max -m 256M -cdrom build/emberglass.iso -serial stdio -no-reboot -no-shutdown
 clean:
 	rm -rf build
