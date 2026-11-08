@@ -25,8 +25,8 @@ This is a research and safety review of the Milestone 01 prototype, **not** a cl
 ## Findings and planned corrections
 
 ### P0 · Boot and failure observability
-- [ ] Verify `READY` in QEMU; compilation and host unit tests are insufficient.
-- [ ] Diagnose framebuffer stall (serial trace around video initialization).
+- [x] Verify `READY` in QEMU with `-cpu max` (GitHub Actions run 42513742505).
+- [x] Diagnose framebuffer stall: emulator default `qemu64` raised `#UD` in early drawing; explicit `-cpu max` boots and reaches `READY`. Establish conservative supported CPU baseline next.
 - [ ] Record BIOS and UEFI emulator checks separately.
 - [ ] Add `-s -S` GDB debug instructions and QEMU `-d int,guest_errors` fault trace instructions.
 
@@ -43,7 +43,7 @@ This is a research and safety review of the Milestone 01 prototype, **not** a cl
 
 ### P2 · Engineering methodology
 - [ ] Test hostile and malformed boot inputs, overflow, out-of-range framebuffers, allocator exhaustion, absent Limine responses.
-- [ ] Add QEMU smoke tests to CI; later test intentional divide-by-zero and page faults.
+- [x] Add QEMU BIOS smoke test to CI with serial readiness assertion. Later add UEFI and intentional divide-by-zero/page-fault tests.
 - [ ] Use signed/pinned external release artifacts and an explicit license/notice inventory.
 - [ ] Create an architecture decision record comparing modular monolith, hybrid, and microkernel goals (IPC cost, fault isolation, driver complexity, maintainability).
 
