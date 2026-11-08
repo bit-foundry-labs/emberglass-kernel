@@ -30,9 +30,22 @@ void kernel_entry(void) {
     }
     emberglass_boot_stage = 2;
     serial_puts("BOOT: protocol base revision accepted\n");
-    if (fb_request.response && fb_request.response->framebuffer_count && fb_request.response->framebuffers)
-        display_splash(fb_request.response->framebuffers[0]);
-    else serial_puts("WARN: framebuffer unavailable; serial remains active.\n");
+    serial_puts("DISPLAY: checking framebuffer response\n");
+    if (fb_request.response && fb_request.response->framebuffer_count && fb_request.response->framebuffers) {
+        struct limine_framebuffer *f = fb_request.response->framebuffers[0];
+        serial_puts("DISPLAY: dimensions = ");
+        if (f) {
+            serial_dec64(f->width); serial_puts("x"); serial_dec64(f->height);
+            serial_puts(", pitch = "); serial_dec64(f->pitch); serial_puts("\n");
+        } else {
+            serial_puts("no framebuffer pointer\n");
+        }
+        serial_puts("DISPLAY: drawing splash\n");
+        display_splash(f);
+        serial_puts("DISPLAY: done\n");
+    } else {
+        serial_puts("WARN: framebuffer unavailable; serial remains active.\n");
+    }
     if (!map_request.response || !map_request.response->entries || !hhdm_request.response) {
         serial_puts("ERROR: missing memory map or higher-half direct map.\n"); halt_forever();
     }
