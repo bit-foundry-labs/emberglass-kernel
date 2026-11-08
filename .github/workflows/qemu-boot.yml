@@ -27,6 +27,7 @@ jobs:
           timeout --signal=TERM --kill-after=2s 20s \
             qemu-system-x86_64 \
               -m 256M \
+              -cpu max \
               -cdrom build/emberglass.iso \
               -display none \
               -d int,guest_errors \
