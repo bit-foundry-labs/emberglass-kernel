@@ -29,6 +29,8 @@ jobs:
               -m 256M \
               -cdrom build/emberglass.iso \
               -display none \
+              -d int,guest_errors \
+              -D build/qemu-debug.log \
               -serial file:build/serial.log \
               -monitor none \
               -no-reboot -no-shutdown
@@ -46,6 +48,10 @@ jobs:
             echo "QEMU crashed or could not start" >&2
             exit 1
           fi
+          echo "--- QEMU exception trace (tail) ---"
+          if [ -f build/qemu-debug.log ]; then
+            tail -n 160 build/qemu-debug.log
+          fi
           grep -Fq "READY: original freestanding kernel entered successfully." build/serial.log
 
       - name: Preserve boot log on failure
@@ -53,5 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qemu-serial-log
-          path: build/serial.log
+          path: |
+            build/serial.log
+            build/qemu-debug.log
           if-no-files-found: ignore
