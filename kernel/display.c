@@ -26,7 +26,8 @@ void display_splash(struct limine_framebuffer *f) {
     const uint32_t flame = pixel(f, 215, 135, 106);
     const uint32_t stone = pixel(f, 231, 225, 210);
     const uint32_t low = pixel(f, 85, 86, 85);
-    rect(f, 0, 0, f->width, f->height, ink);
+    /* Restrict early VRAM writes: no full-screen clear until driver timing is profiled. */
+    rect(f, 0, 0, f->width < 320 ? f->width : 320, f->height < 320 ? f->height : 320, ink);
     uint64_t left = f->width / 8, top = f->height / 4;
     uint64_t unit = f->height / 16;
     rect(f, left, top, unit, unit * 4, flame);
