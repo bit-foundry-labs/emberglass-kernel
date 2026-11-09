@@ -18,6 +18,8 @@ check: all
 test: | build
 	$(CC) -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude tests/test_memory.c kernel/memory.c -o build/test_memory
 	./build/test_memory
+	$(CC) -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -DEMBER_SERIAL_TEST -DSERIAL_READY_POLL_LIMIT=8u -Iinclude tests/test_serial.c kernel/serial.c -o build/test_serial
+	./build/test_serial
 iso: check
 	bash scripts/make_iso.sh
 run: iso
