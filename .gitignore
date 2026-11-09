@@ -59,3 +59,10 @@ build/
 .cache/
 *.iso
 limine-binary/
+
+# Rust / Cargo (retain Cargo.lock for reproducible kernel builds)
+target/
+*.rs.bk
+
+# Local IDE metadata
+.idea/
