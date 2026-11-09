@@ -104,6 +104,15 @@ impl AuthorizedPolicy {
     }
 }
 
+/// A named root-capability request built by trusted kernel initialization.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RootCapabilitySpec {
+    pub owner: SpaceId,
+    pub tenant: Tenant,
+    pub rights: Rights,
+    pub limits: Limits,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CapError {
     AccessDenied,
@@ -222,23 +231,20 @@ impl<const N: usize> CapTable<N> {
     /// Root capabilities come from the trusted service manager / boot logic.
     pub fn mint_root(
         &mut self,
-        owner: SpaceId,
-        tenant: Tenant,
-        rights: Rights,
-        limits: Limits,
+        specification: RootCapabilitySpec,
         now: u64,
     ) -> Result<Handle, CapError> {
-        if rights.is_empty() || !limits.valid(now) {
+        if specification.rights.is_empty() || !specification.limits.valid(now) {
             return Err(CapError::InvalidLimits);
         }
-        if rights.has_unknown_bits() {
+        if specification.rights.has_unknown_bits() {
             return Err(CapError::InvalidRights);
         }
         self.allocate(Entry {
-            owner,
-            tenant,
-            rights,
-            limits,
+            owner: specification.owner,
+            tenant: specification.tenant,
+            rights: specification.rights,
+            limits: specification.limits,
             parent: None,
         })
     }
@@ -366,10 +372,12 @@ mod tests {
     fn root<const N: usize>(table: &mut CapTable<N>) -> Handle {
         table
             .mint_root(
-                A,
-                T,
-                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
-                bounds(),
+                RootCapabilitySpec {
+                    owner: A,
+                    tenant: T,
+                    rights: Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                    limits: bounds(),
+                },
                 1,
             )
             .unwrap()
@@ -536,16 +544,40 @@ mod tests {
     fn capacity_and_zero_rights_are_rejected() {
         let mut table = CapTable::<1>::new();
         assert_eq!(
-            table.mint_root(A, T, Rights(0), bounds(), 1),
+            table.mint_root(
+                RootCapabilitySpec {
+                    owner: A,
+                    tenant: T,
+                    rights: Rights(0),
+                    limits: bounds(),
+                },
+                1,
+            ),
             Err(CapError::InvalidLimits)
         );
         assert_eq!(
-            table.mint_root(A, T, Rights(0b1000), bounds(), 1),
+            table.mint_root(
+                RootCapabilitySpec {
+                    owner: A,
+                    tenant: T,
+                    rights: Rights(0b1000),
+                    limits: bounds(),
+                },
+                1,
+            ),
             Err(CapError::InvalidRights)
         );
         let _ = root(&mut table);
         assert_eq!(
-            table.mint_root(A, T, Rights::UPDATE, bounds(), 1),
+            table.mint_root(
+                RootCapabilitySpec {
+                    owner: A,
+                    tenant: T,
+                    rights: Rights::UPDATE,
+                    limits: bounds(),
+                },
+                1,
+            ),
             Err(CapError::Full)
         );
     }
@@ -571,7 +603,15 @@ mod tests {
         let last = root(&mut table);
         table.revoke(A, last, 1).unwrap();
         assert_eq!(
-            table.mint_root(A, T, Rights::UPDATE, bounds(), 1),
+            table.mint_root(
+                RootCapabilitySpec {
+                    owner: A,
+                    tenant: T,
+                    rights: Rights::UPDATE,
+                    limits: bounds(),
+                },
+                1,
+            ),
             Err(CapError::Full)
         );
         assert_eq!(

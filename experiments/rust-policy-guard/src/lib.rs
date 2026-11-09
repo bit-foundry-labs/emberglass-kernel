@@ -171,7 +171,7 @@ pub fn admit_minimums(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capabilities::{Limits, Rights};
+    use crate::capabilities::{Limits, Rights, RootCapabilitySpec};
 
     const A: Tenant = Tenant(1);
     const B: Tenant = Tenant(2);
@@ -189,10 +189,12 @@ mod tests {
     fn root_cap(table: &mut CapTable<4>) -> Handle {
         table
             .mint_root(
-                CALLER,
-                A,
-                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
-                authority_bounds(),
+                RootCapabilitySpec {
+                    owner: CALLER,
+                    tenant: A,
+                    rights: Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                    limits: authority_bounds(),
+                },
                 1,
             )
             .unwrap()
@@ -207,10 +209,12 @@ mod tests {
     fn other_root_cap(table: &mut CapTable<4>) -> Handle {
         table
             .mint_root(
-                OTHER,
-                B,
-                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
-                authority_bounds(),
+                RootCapabilitySpec {
+                    owner: OTHER,
+                    tenant: B,
+                    rights: Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                    limits: authority_bounds(),
+                },
                 1,
             )
             .unwrap()
@@ -364,10 +368,12 @@ mod tests {
         let mut table = CapTable::<1>::new();
         let old = table
             .mint_root(
-                CALLER,
-                A,
-                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
-                authority_bounds(),
+                RootCapabilitySpec {
+                    owner: CALLER,
+                    tenant: A,
+                    rights: Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                    limits: authority_bounds(),
+                },
                 1,
             )
             .unwrap();
@@ -378,10 +384,12 @@ mod tests {
         table.revoke(CALLER, old, 1).unwrap();
         let reissued = table
             .mint_root(
-                CALLER,
-                A,
-                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
-                authority_bounds(),
+                RootCapabilitySpec {
+                    owner: CALLER,
+                    tenant: A,
+                    rights: Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                    limits: authority_bounds(),
+                },
                 1,
             )
             .unwrap();
