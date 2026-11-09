@@ -52,67 +52,69 @@ pub enum Decision {
     Baseline(Rejection),
 }
 
-/// An asynchronous advisory-policy gate. Invalid suggestions never change state.
+/// Policy session bound explicitly to one capability and caller.
+///
+/// Binding is validated when the gate is created and rechecked on every
+/// request. Successful advice updates this session's replay epoch.
+#[derive(Debug)]
 pub struct PolicyGate {
-    bound_authority: Option<BoundAuthority>,
+    bound_authority: BoundAuthority,
     last_epoch: Option<u64>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct BoundAuthority {
     caller: SpaceId,
-    handle_raw: u64,
-}
-
-impl Default for PolicyGate {
-    fn default() -> Self {
-        Self::new()
-    }
+    handle: Handle,
 }
 
 impl PolicyGate {
-    pub const fn new() -> Self {
-        Self {
-            bound_authority: None,
-            last_epoch: None,
-        }
-    }
-
-    pub fn evaluate<const N: usize>(
-        &mut self,
+    /// The real kernel must derive caller from a protected IPC/thread context.
+    /// The host simulator receives caller from its trusted test harness.
+    pub fn try_bind<const N: usize>(
         table: &CapTable<N>,
         caller: SpaceId,
-        authority_handle: Handle,
+        handle: Handle,
+        now: u64,
+    ) -> Result<Self, CapError> {
+        table.authorize_update(caller, handle, now)?;
+        Ok(Self {
+            bound_authority: BoundAuthority { caller, handle },
+            last_epoch: None,
+        })
+    }
+
+    /// Validate advice and record a successful epoch. This method does NOT
+    /// apply the policy to hardware; the kernel must protect that later step
+    /// with an admission hold or fresh authorization.
+    pub fn validate_and_record<const N: usize>(
+        &mut self,
+        table: &CapTable<N>,
         candidate: Option<Proposal>,
         now: u64,
     ) -> Decision {
-        if let Some(bound) = self.bound_authority {
-            if bound.caller != caller || bound.handle_raw != authority_handle.raw() {
-                return Decision::Baseline(Rejection::Unauthorized);
-            }
-        }
-        let authority = match table.authorize_update(caller, authority_handle, now) {
+        let authority = match table.authorize_update(
+            self.bound_authority.caller,
+            self.bound_authority.handle,
+            now,
+        ) {
             Ok(authority) => authority,
             Err(CapError::Expired) => return Decision::Baseline(Rejection::Expired),
             Err(_) => return Decision::Baseline(Rejection::Unauthorized),
         };
-        if self.bound_authority.is_none() {
-            self.bound_authority = Some(BoundAuthority {
-                caller,
-                handle_raw: authority_handle.raw(),
-            });
-        }
         let limits = authority.limits();
-        let Some(p) = candidate else {
+        let Some(proposal) = candidate else {
             return Decision::Baseline(Rejection::Missing);
         };
-        let problem = if p.tenant != authority.tenant() {
+        let problem = if proposal.tenant != authority.tenant() {
             Some(Rejection::WrongTenant)
-        } else if p.epoch != now || self.last_epoch.is_some_and(|e| p.epoch <= e) {
+        } else if proposal.epoch != now
+            || self.last_epoch.is_some_and(|previous| proposal.epoch <= previous)
+        {
             Some(Rejection::ReplayOrStale)
-        } else if p.weight == 0 || p.weight > limits.max_weight {
+        } else if proposal.weight == 0 || proposal.weight > limits.max_weight {
             Some(Rejection::InvalidWeight)
-        } else if p.pages > limits.max_pages {
+        } else if proposal.pages > limits.max_pages {
             Some(Rejection::MemoryLimit)
         } else {
             None
@@ -120,11 +122,11 @@ impl PolicyGate {
         if let Some(error) = problem {
             return Decision::Baseline(error);
         }
-        self.last_epoch = Some(p.epoch);
+        self.last_epoch = Some(proposal.epoch);
         Decision::Advisory(ValidatedPolicy {
-            tenant: p.tenant,
-            weight: p.weight,
-            pages: p.pages,
+            tenant: proposal.tenant,
+            weight: proposal.weight,
+            pages: proposal.pages,
         })
     }
 }
@@ -203,7 +205,8 @@ mod tests {
     fn gate() -> (PolicyGate, CapTable<4>, Handle) {
         let mut table = CapTable::<4>::new();
         let handle = root_cap(&mut table);
-        (PolicyGate::new(), table, handle)
+        let policy_gate = PolicyGate::try_bind(&table, CALLER, handle, 1).unwrap();
+        (policy_gate, table, handle)
     }
 
     fn other_root_cap(table: &mut CapTable<4>) -> Handle {
@@ -232,7 +235,7 @@ mod tests {
     fn valid_advice_is_authorized_not_executed() {
         let (mut g, table, handle) = gate();
         assert!(matches!(
-            g.evaluate(&table, CALLER, handle, Some(good(1)), 1),
+            g.validate_and_record(&table, Some(good(1)), 1),
             Decision::Advisory(_)
         ));
     }
@@ -240,7 +243,7 @@ mod tests {
     fn model_absence_falls_back() {
         let (mut g, table, handle) = gate();
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, None, 1),
+            g.validate_and_record(&table, None, 1),
             Decision::Baseline(Rejection::Missing)
         );
     }
@@ -250,7 +253,7 @@ mod tests {
         let mut p = good(1);
         p.tenant = B;
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, Some(p), 1),
+            g.validate_and_record(&table, Some(p), 1),
             Decision::Baseline(Rejection::WrongTenant)
         );
     }
@@ -260,11 +263,11 @@ mod tests {
         let mut p = good(1);
         p.weight = 250;
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, Some(p), 1),
+            g.validate_and_record(&table, Some(p), 1),
             Decision::Baseline(Rejection::InvalidWeight)
         );
         assert!(matches!(
-            g.evaluate(&table, CALLER, handle, Some(good(1)), 1),
+            g.validate_and_record(&table, Some(good(1)), 1),
             Decision::Advisory(_)
         ));
     }
@@ -274,7 +277,7 @@ mod tests {
         let mut p = good(1);
         p.pages = 65;
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, Some(p), 1),
+            g.validate_and_record(&table, Some(p), 1),
             Decision::Baseline(Rejection::MemoryLimit)
         );
     }
@@ -282,70 +285,58 @@ mod tests {
     fn expired_or_replayed_advice_is_denied() {
         let (mut g, table, handle) = gate();
         assert!(matches!(
-            g.evaluate(&table, CALLER, handle, Some(good(2)), 2),
+            g.validate_and_record(&table, Some(good(2)), 2),
             Decision::Advisory(_)
         ));
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, Some(good(2)), 2),
+            g.validate_and_record(&table, Some(good(2)), 2),
             Decision::Baseline(Rejection::ReplayOrStale)
         );
         assert_eq!(
-            g.evaluate(&table, CALLER, handle, Some(good(11)), 11),
+            g.validate_and_record(&table, Some(good(11)), 11),
             Decision::Baseline(Rejection::Expired)
         );
     }
 
     #[test]
-    fn forged_or_wrong_owner_handle_is_rejected() {
-        let (mut g, table, handle) = gate();
-        assert_eq!(
-            g.evaluate(&table, OTHER, handle, Some(good(1)), 1),
-            Decision::Baseline(Rejection::Unauthorized)
-        );
-        assert_eq!(
-            g.evaluate(&table, CALLER, Handle::from_raw(999), Some(good(1)), 1),
-            Decision::Baseline(Rejection::Unauthorized)
-        );
+    fn forged_or_wrong_owner_handle_is_rejected_at_binding() {
+        let (_, table, handle) = gate();
+        assert!(matches!(
+            PolicyGate::try_bind(&table, OTHER, handle, 1),
+            Err(CapError::AccessDenied)
+        ));
+        assert!(matches!(
+            PolicyGate::try_bind(&table, CALLER, Handle::from_raw(999), 1),
+            Err(CapError::AccessDenied)
+        ));
     }
 
     #[test]
-    fn replay_state_does_not_cross_bound_authority() {
-        let mut g = PolicyGate::new();
-        let mut table = CapTable::<4>::new();
-        let caller_handle = root_cap(&mut table);
-        let other_handle = other_root_cap(&mut table);
+    fn rejected_proposal_does_not_advance_replay_epoch() {
+        let (mut policy_gate, table, _) = gate();
+        let mut invalid = good(3);
+        invalid.weight = 0;
+        assert_eq!(
+            policy_gate.validate_and_record(&table, Some(invalid), 3),
+            Decision::Baseline(Rejection::InvalidWeight)
+        );
         assert!(matches!(
-            g.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            policy_gate.validate_and_record(&table, Some(good(3)), 3),
             Decision::Advisory(_)
         ));
         assert_eq!(
-            g.evaluate(
-                &table,
-                OTHER,
-                other_handle,
-                Some(Proposal {
-                    tenant: B,
-                    epoch: 3,
-                    weight: 100,
-                    pages: 16
-                }),
-                3
-            ),
-            Decision::Baseline(Rejection::Unauthorized)
-        );
-        assert_eq!(
-            g.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            policy_gate.validate_and_record(&table, Some(good(3)), 3),
             Decision::Baseline(Rejection::ReplayOrStale)
         );
     }
 
     #[test]
     fn separate_gates_can_authorize_same_epoch_for_different_capabilities() {
-        let mut gate_a = PolicyGate::new();
-        let mut gate_b = PolicyGate::new();
         let mut table = CapTable::<4>::new();
         let caller_handle = root_cap(&mut table);
         let other_handle = other_root_cap(&mut table);
+        let mut gate_a = PolicyGate::try_bind(&table, CALLER, caller_handle, 1).unwrap();
+        let mut gate_b = PolicyGate::try_bind(&table, OTHER, other_handle, 1).unwrap();
         let proposal_b = Proposal {
             tenant: B,
             epoch: 3,
@@ -353,20 +344,19 @@ mod tests {
             pages: 16,
         };
         assert!(matches!(
-            gate_a.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            gate_a.validate_and_record(&table, Some(good(3)), 3),
             Decision::Advisory(_)
         ));
         assert!(matches!(
-            gate_b.evaluate(&table, OTHER, other_handle, Some(proposal_b), 3),
+            gate_b.validate_and_record(&table, Some(proposal_b), 3),
             Decision::Advisory(_)
         ));
     }
 
     #[test]
     fn revoked_and_reissued_handle_cannot_rebind_gate() {
-        let mut g = PolicyGate::new();
         let mut table = CapTable::<1>::new();
-        let old = table
+        let original_handle = table
             .mint_root(
                 RootCapabilitySpec {
                     owner: CALLER,
@@ -377,12 +367,14 @@ mod tests {
                 1,
             )
             .unwrap();
+        let mut original_gate =
+            PolicyGate::try_bind(&table, CALLER, original_handle, 1).unwrap();
         assert!(matches!(
-            g.evaluate(&table, CALLER, old, Some(good(1)), 1),
+            original_gate.validate_and_record(&table, Some(good(1)), 1),
             Decision::Advisory(_)
         ));
-        table.revoke(CALLER, old, 1).unwrap();
-        let reissued = table
+        table.revoke(CALLER, original_handle, 1).unwrap();
+        let reissued_handle = table
             .mint_root(
                 RootCapabilitySpec {
                     owner: CALLER,
@@ -393,11 +385,17 @@ mod tests {
                 1,
             )
             .unwrap();
-        assert_ne!(old.raw(), reissued.raw());
+        assert_ne!(original_handle.raw(), reissued_handle.raw());
         assert_eq!(
-            g.evaluate(&table, CALLER, reissued, Some(good(2)), 2),
+            original_gate.validate_and_record(&table, Some(good(2)), 2),
             Decision::Baseline(Rejection::Unauthorized)
         );
+        let mut reissued_gate =
+            PolicyGate::try_bind(&table, CALLER, reissued_handle, 2).unwrap();
+        assert!(matches!(
+            reissued_gate.validate_and_record(&table, Some(good(2)), 2),
+            Decision::Advisory(_)
+        ));
     }
     #[test]
     fn cpu_admission_respects_capacity() {
