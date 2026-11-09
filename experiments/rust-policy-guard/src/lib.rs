@@ -233,7 +233,7 @@ mod tests {
     }
     #[test]
     fn valid_advice_is_authorized_not_executed() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         assert!(matches!(
             g.validate_and_record(&table, Some(good(1)), 1),
             Decision::Advisory(_)
@@ -241,7 +241,7 @@ mod tests {
     }
     #[test]
     fn model_absence_falls_back() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         assert_eq!(
             g.validate_and_record(&table, None, 1),
             Decision::Baseline(Rejection::Missing)
@@ -249,7 +249,7 @@ mod tests {
     }
     #[test]
     fn foreign_tenant_is_denied() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         let mut p = good(1);
         p.tenant = B;
         assert_eq!(
@@ -259,7 +259,7 @@ mod tests {
     }
     #[test]
     fn priority_clamping_is_not_substituted_for_rejection() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         let mut p = good(1);
         p.weight = 250;
         assert_eq!(
@@ -273,7 +273,7 @@ mod tests {
     }
     #[test]
     fn budgets_are_bounded() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         let mut p = good(1);
         p.pages = 65;
         assert_eq!(
@@ -283,7 +283,7 @@ mod tests {
     }
     #[test]
     fn expired_or_replayed_advice_is_denied() {
-        let (mut g, table, handle) = gate();
+        let (mut g, table, _) = gate();
         assert!(matches!(
             g.validate_and_record(&table, Some(good(2)), 2),
             Decision::Advisory(_)
