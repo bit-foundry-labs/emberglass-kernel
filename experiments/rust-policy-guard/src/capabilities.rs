@@ -299,12 +299,7 @@ impl<const N: usize> CapTable<N> {
     /// KERNEL-MEDIATED revocation requiring REVOKE authority on this handle.
     /// Revocation invalidates descendants; we eagerly reclaim their slots.
     /// This bounded scan is not optimized for large tables.
-    pub fn revoke(
-        &mut self,
-        caller: SpaceId,
-        handle: Handle,
-        now: u64,
-    ) -> Result<(), CapError> {
+    pub fn revoke(&mut self, caller: SpaceId, handle: Handle, now: u64) -> Result<(), CapError> {
         self.authorize(caller, handle, Rights::REVOKE, now)?;
         self.slots[handle.index()].clear();
 
@@ -329,7 +324,10 @@ impl<const N: usize> CapTable<N> {
     }
 
     pub fn live_slots(&self) -> usize {
-        self.slots.iter().filter(|slot| slot.entry.is_some()).count()
+        self.slots
+            .iter()
+            .filter(|slot| slot.entry.is_some())
+            .count()
     }
 }
 
@@ -396,7 +394,10 @@ mod tests {
         let child = table
             .delegate(A, original, B, Rights::UPDATE, narrow, 1)
             .unwrap();
-        assert_eq!(table.authorize_update(B, child, 2).unwrap().limits(), narrow);
+        assert_eq!(
+            table.authorize_update(B, child, 2).unwrap().limits(),
+            narrow
+        );
         assert_eq!(
             table.authorize_update(A, child, 2),
             Err(CapError::AccessDenied)
@@ -492,10 +493,7 @@ mod tests {
     fn expired_capability_cannot_be_delegated_or_used() {
         let mut table = CapTable::<4>::new();
         let cap = root(&mut table);
-        assert_eq!(
-            table.authorize_update(A, cap, 11),
-            Err(CapError::Expired)
-        );
+        assert_eq!(table.authorize_update(A, cap, 11), Err(CapError::Expired));
         assert_eq!(
             table.delegate(A, cap, B, Rights::UPDATE, bounds(), 11),
             Err(CapError::Expired)
@@ -517,6 +515,20 @@ mod tests {
     }
 
     #[test]
+    fn full_table_rejects_additional_delegation_without_mutation() {
+        let mut table = CapTable::<2>::new();
+        let root = root(&mut table);
+        let _child = table
+            .delegate(A, root, B, Rights::UPDATE, bounds(), 1)
+            .unwrap();
+        assert_eq!(
+            table.delegate(A, root, B, Rights::UPDATE, bounds(), 1),
+            Err(CapError::Full)
+        );
+        assert_eq!(table.live_slots(), 2);
+    }
+
+    #[test]
     fn generational_counter_exhaustion_retires_slot() {
         let mut table = CapTable::<1>::new();
         table.slots[0].generation = u32::MAX;
@@ -526,6 +538,9 @@ mod tests {
             table.mint_root(A, T, Rights::UPDATE, bounds(), 1),
             Err(CapError::Full)
         );
-        assert_eq!(table.authorize_update(A, last, 1), Err(CapError::AccessDenied));
+        assert_eq!(
+            table.authorize_update(A, last, 1),
+            Err(CapError::AccessDenied)
+        );
     }
 }
