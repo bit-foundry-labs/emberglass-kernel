@@ -26,8 +26,8 @@ printf '%s  %s\n' "$EXPECTED_SHA256" "$JAR" | sha256sum --check --status || {
 }
 cd "$MODEL_DIR"
 mkdir -p .check-logs
-java -Xmx512m -jar "$JAR" -workers 1 -config RevocationSafe.cfg RevocationSafe.tla | tee .check-logs/safe.log
-if java -Xmx512m -jar "$JAR" -workers 1 -config RevocationBuggy.cfg RevocationBuggy.tla >.check-logs/buggy.log 2>&1; then
+java -Xmx512m -jar "$JAR" -deadlock -workers 1 -config RevocationSafe.cfg RevocationSafe.tla | tee .check-logs/safe.log
+if java -Xmx512m -jar "$JAR" -deadlock -workers 1 -config RevocationBuggy.cfg RevocationBuggy.tla >.check-logs/buggy.log 2>&1; then
   echo "Unexpectedly passed: vulnerable model produced no violation" >&2
   exit 1
 fi
