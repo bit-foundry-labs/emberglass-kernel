@@ -33,7 +33,7 @@ Admit(c) ==
     /\ holds' = holds \cup {c}
     /\ lateAdmission' = (phase # "Active")
     /\ staleAdmission' = (handles[c] # generation)
-    /\ UNCHANGED <<phase, generation, handles, committed, device,
+    /\ UNCHANGED <<phase, generation, handles, holds, committed, device,
                   reclaimed, unrelatedSteps>>
 
 \* In-flight work may finish under an existing admission hold.
@@ -61,19 +61,19 @@ SubmitDevice ==
     /\ phase = "Active"
     /\ device = "Idle"
     /\ device' = "Running"
-    /\ UNCHANGED <<phase, generation, handles, committed, reclaimed,
+    /\ UNCHANGED <<phase, generation, handles, holds, committed, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 DeviceComplete ==
     /\ device = "Running"
     /\ device' = "Idle"
-    /\ UNCHANGED <<phase, generation, handles, committed, reclaimed,
+    /\ UNCHANGED <<phase, generation, handles, holds, committed, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 DeviceHang ==
     /\ device = "Running"
     /\ device' = "Hung"
-    /\ UNCHANGED <<phase, generation, handles, committed, reclaimed,
+    /\ UNCHANGED <<phase, generation, handles, holds, committed, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 \* This recovery action assumes a *provably safe* device reset.
@@ -81,14 +81,14 @@ DeviceHang ==
 ResetDevice ==
     /\ device = "Hung"
     /\ device' = "Idle"
-    /\ UNCHANGED <<phase, generation, handles, committed, reclaimed,
+    /\ UNCHANGED <<phase, generation, handles, holds, committed, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 Quarantine ==
     /\ phase = "Draining"
     /\ device = "Hung"
     /\ phase' = "Quarantined"
-    /\ UNCHANGED <<generation, handles, committed, device, reclaimed,
+    /\ UNCHANGED <<generation, handles, holds, committed, device, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 Quiesce ==
@@ -96,14 +96,14 @@ Quiesce ==
     /\ holds = {}
     /\ device = "Idle"
     /\ phase' = "Quiesced"
-    /\ UNCHANGED <<generation, handles, committed, device, reclaimed,
+    /\ UNCHANGED <<generation, handles, holds, committed, device, reclaimed,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 Reclaim ==
     /\ phase = "Quiesced"
     /\ phase' = "Reclaimed"
     /\ reclaimed' = TRUE
-    /\ UNCHANGED <<generation, handles, committed, device,
+    /\ UNCHANGED <<generation, handles, holds, committed, device,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 Reuse ==
@@ -112,7 +112,7 @@ Reuse ==
     /\ generation' = 2
     /\ phase' = "Active"
     /\ reclaimed' = FALSE
-    /\ UNCHANGED <<handles, committed, device,
+    /\ UNCHANGED <<handles, holds, committed, device,
                   lateAdmission, staleAdmission, unrelatedSteps>>
 
 \* Trusted reissue. An old handle alone is rejected after slot reuse.
