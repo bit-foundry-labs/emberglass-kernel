@@ -29,3 +29,12 @@ jobs:
       - name: Check actual TLA+ models with pinned TLC
         working-directory: research/formal/revocation
         run: TLA_DOWNLOAD=1 bash check_tlc.sh
+
+      - name: Save TLC model-checking evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emberglass-revocation-tlc-logs
+          path: research/formal/revocation/.check-logs/
+          if-no-files-found: ignore
+          retention-days: 14
