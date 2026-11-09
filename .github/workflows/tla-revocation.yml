@@ -36,5 +36,6 @@ jobs:
         with:
           name: emberglass-revocation-tlc-logs
           path: research/formal/revocation/.check-logs/
-          if-no-files-found: ignore
+          if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
