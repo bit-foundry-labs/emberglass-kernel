@@ -33,7 +33,7 @@ Admit(c) ==
     /\ holds' = holds \cup {c}
     /\ lateAdmission' = (phase # "Active")
     /\ staleAdmission' = (handles[c] # generation)
-    /\ UNCHANGED <<phase, generation, handles, holds, committed, device,
+    /\ UNCHANGED <<phase, generation, handles, committed, device,
                   reclaimed, unrelatedSteps>>
 
 \* In-flight work may finish under an existing admission hold.
