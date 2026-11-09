@@ -6,14 +6,14 @@ EXPECTED_SHA256=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
 RELEASE_URL=https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
 MODEL_DIR="$(cd "$(dirname "$0")" && pwd)"
 JAR="$MODEL_DIR/.tools/tla2tools-1.7.4.jar"
-if [ -n "$TLA_TOOLS_JAR" ]; then JAR="$TLA_TOOLS_JAR"; fi
+if printenv TLA_TOOLS_JAR >/dev/null 2>&1; then JAR="$(printenv TLA_TOOLS_JAR)"; fi
 
 if ! command -v java >/dev/null 2>&1; then
   echo "Java 11+ is required" >&2
   exit 1
 fi
 if [[ ! -f "$JAR" ]]; then
-  if [[ "$TLA_DOWNLOAD" != "1" ]]; then
+  if [[ "$(printenv TLA_DOWNLOAD || true)" != "1" ]]; then
     echo "No TLC JAR found at $JAR. Run: TLA_DOWNLOAD=1 bash check_tlc.sh" >&2
     exit 1
   fi
