@@ -43,6 +43,8 @@ impl Handle {
 pub struct Rights(u8);
 
 impl Rights {
+    const KNOWN_MASK: u8 = Self::UPDATE.0 | Self::DELEGATE.0 | Self::REVOKE.0;
+
     pub const UPDATE: Self = Self(0b001);
     pub const DELEGATE: Self = Self(0b010);
     pub const REVOKE: Self = Self(0b100);
@@ -57,6 +59,10 @@ impl Rights {
 
     fn is_empty(self) -> bool {
         self.0 == 0
+    }
+
+    fn has_unknown_bits(self) -> bool {
+        (self.0 & !Self::KNOWN_MASK) != 0
     }
 }
 
@@ -103,6 +109,7 @@ pub enum CapError {
     AccessDenied,
     Expired,
     InvalidLimits,
+    InvalidRights,
     RightsEscalation,
     LimitsEscalation,
     Full,
@@ -224,6 +231,9 @@ impl<const N: usize> CapTable<N> {
         if rights.is_empty() || !limits.valid(now) {
             return Err(CapError::InvalidLimits);
         }
+        if rights.has_unknown_bits() {
+            return Err(CapError::InvalidRights);
+        }
         self.allocate(Entry {
             owner,
             tenant,
@@ -256,6 +266,9 @@ impl<const N: usize> CapTable<N> {
         handle: Handle,
         now: u64,
     ) -> Result<AuthorizedPolicy, CapError> {
+        // This returns a copy of rights/limits at check time. A trusted kernel
+        // must either hold a lock/transaction across validate+apply or re-run
+        // authorization immediately before actuation to avoid TOCTOU races.
         let entry = self.authorize(caller, handle, Rights::UPDATE, now)?;
         Ok(AuthorizedPolicy {
             tenant: entry.tenant,
@@ -277,6 +290,9 @@ impl<const N: usize> CapTable<N> {
         let parent = self.authorize(caller, parent_handle, Rights::DELEGATE, now)?;
         if rights.is_empty() {
             return Err(CapError::InvalidLimits);
+        }
+        if rights.has_unknown_bits() {
+            return Err(CapError::InvalidRights);
         }
         if !parent.rights.contains(rights) {
             return Err(CapError::RightsEscalation);
@@ -414,7 +430,7 @@ mod tests {
         let original = root(&mut table);
         assert_eq!(
             table.delegate(A, original, B, Rights(0b1000), bounds(), 1),
-            Err(CapError::RightsEscalation)
+            Err(CapError::InvalidRights)
         );
         let too_large = Limits {
             max_weight: 151,
@@ -431,6 +447,22 @@ mod tests {
         assert_eq!(
             table.delegate(A, original, B, Rights::UPDATE, too_long, 1),
             Err(CapError::LimitsEscalation)
+        );
+        let too_many_pages = Limits {
+            max_pages: 65,
+            ..bounds()
+        };
+        assert_eq!(
+            table.delegate(A, original, B, Rights::UPDATE, too_many_pages, 1),
+            Err(CapError::LimitsEscalation)
+        );
+        let zero_weight = Limits {
+            max_weight: 0,
+            ..bounds()
+        };
+        assert_eq!(
+            table.delegate(A, original, B, Rights::UPDATE, zero_weight, 1),
+            Err(CapError::InvalidLimits)
         );
     }
 
@@ -507,6 +539,10 @@ mod tests {
             table.mint_root(A, T, Rights(0), bounds(), 1),
             Err(CapError::InvalidLimits)
         );
+        assert_eq!(
+            table.mint_root(A, T, Rights(0b1000), bounds(), 1),
+            Err(CapError::InvalidRights)
+        );
         let _ = root(&mut table);
         assert_eq!(
             table.mint_root(A, T, Rights::UPDATE, bounds(), 1),
@@ -540,6 +576,20 @@ mod tests {
         );
         assert_eq!(
             table.authorize_update(A, last, 1),
+            Err(CapError::AccessDenied)
+        );
+    }
+
+    #[test]
+    fn authorization_snapshot_requires_revalidation_after_revocation() {
+        let mut table = CapTable::<2>::new();
+        let cap = root(&mut table);
+        let authorized = table.authorize_update(A, cap, 1).unwrap();
+        assert_eq!(authorized.tenant(), T);
+        table.revoke(A, cap, 1).unwrap();
+        assert_eq!(authorized.tenant(), T);
+        assert_eq!(
+            table.authorize_update(A, cap, 1),
             Err(CapError::AccessDenied)
         );
     }

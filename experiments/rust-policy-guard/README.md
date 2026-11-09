@@ -13,7 +13,7 @@ Test: `cargo test` in this directory.
 - Model absence produces baseline fallback, independent of model inference
 - Simplified sum of CPU minimum requests cannot exceed an epoch's available capacity
 
-Remaining risks and limits: host-only caller identity simulation, no hardware-enforced address-space isolation, bounded linear revocation scans (possible DoS pressure at scale), and no formal verification of capability invariants.
+Remaining risks and limits: host-only caller identity simulation, no hardware-enforced address-space isolation, bounded linear revocation scans (possible DoS pressure at scale), authorization snapshots require atomic validate+apply (or immediate revalidation) to avoid TOCTOU races, and no formal verification of capability invariants.
 
 Next: scheduler runtime fairness, syscall/IPC binding, fault injection, and formal property harnesses.
 

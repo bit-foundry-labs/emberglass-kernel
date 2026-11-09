@@ -54,7 +54,14 @@ pub enum Decision {
 
 /// An asynchronous advisory-policy gate. Invalid suggestions never change state.
 pub struct PolicyGate {
+    bound_authority: Option<BoundAuthority>,
     last_epoch: Option<u64>,
+}
+
+#[derive(Clone, Copy)]
+struct BoundAuthority {
+    caller: SpaceId,
+    handle_raw: u64,
 }
 
 impl Default for PolicyGate {
@@ -65,7 +72,10 @@ impl Default for PolicyGate {
 
 impl PolicyGate {
     pub const fn new() -> Self {
-        Self { last_epoch: None }
+        Self {
+            bound_authority: None,
+            last_epoch: None,
+        }
     }
 
     pub fn evaluate<const N: usize>(
@@ -76,11 +86,22 @@ impl PolicyGate {
         candidate: Option<Proposal>,
         now: u64,
     ) -> Decision {
+        if let Some(bound) = self.bound_authority {
+            if bound.caller != caller || bound.handle_raw != authority_handle.raw() {
+                return Decision::Baseline(Rejection::Unauthorized);
+            }
+        }
         let authority = match table.authorize_update(caller, authority_handle, now) {
             Ok(authority) => authority,
             Err(CapError::Expired) => return Decision::Baseline(Rejection::Expired),
             Err(_) => return Decision::Baseline(Rejection::Unauthorized),
         };
+        if self.bound_authority.is_none() {
+            self.bound_authority = Some(BoundAuthority {
+                caller,
+                handle_raw: authority_handle.raw(),
+            });
+        }
         let limits = authority.limits();
         let Some(p) = candidate else {
             return Decision::Baseline(Rejection::Missing);
@@ -183,6 +204,18 @@ mod tests {
         (PolicyGate::new(), table, handle)
     }
 
+    fn other_root_cap(table: &mut CapTable<4>) -> Handle {
+        table
+            .mint_root(
+                OTHER,
+                B,
+                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                authority_bounds(),
+                1,
+            )
+            .unwrap()
+    }
+
     fn good(epoch: u64) -> Proposal {
         Proposal {
             tenant: A,
@@ -267,6 +300,94 @@ mod tests {
         );
         assert_eq!(
             g.evaluate(&table, CALLER, Handle::from_raw(999), Some(good(1)), 1),
+            Decision::Baseline(Rejection::Unauthorized)
+        );
+    }
+
+    #[test]
+    fn replay_state_does_not_cross_bound_authority() {
+        let mut g = PolicyGate::new();
+        let mut table = CapTable::<4>::new();
+        let caller_handle = root_cap(&mut table);
+        let other_handle = other_root_cap(&mut table);
+        assert!(matches!(
+            g.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            Decision::Advisory(_)
+        ));
+        assert_eq!(
+            g.evaluate(
+                &table,
+                OTHER,
+                other_handle,
+                Some(Proposal {
+                    tenant: B,
+                    epoch: 3,
+                    weight: 100,
+                    pages: 16
+                }),
+                3
+            ),
+            Decision::Baseline(Rejection::Unauthorized)
+        );
+        assert_eq!(
+            g.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            Decision::Baseline(Rejection::ReplayOrStale)
+        );
+    }
+
+    #[test]
+    fn separate_gates_can_authorize_same_epoch_for_different_capabilities() {
+        let mut gate_a = PolicyGate::new();
+        let mut gate_b = PolicyGate::new();
+        let mut table = CapTable::<4>::new();
+        let caller_handle = root_cap(&mut table);
+        let other_handle = other_root_cap(&mut table);
+        let proposal_b = Proposal {
+            tenant: B,
+            epoch: 3,
+            weight: 100,
+            pages: 16,
+        };
+        assert!(matches!(
+            gate_a.evaluate(&table, CALLER, caller_handle, Some(good(3)), 3),
+            Decision::Advisory(_)
+        ));
+        assert!(matches!(
+            gate_b.evaluate(&table, OTHER, other_handle, Some(proposal_b), 3),
+            Decision::Advisory(_)
+        ));
+    }
+
+    #[test]
+    fn revoked_and_reissued_handle_cannot_rebind_gate() {
+        let mut g = PolicyGate::new();
+        let mut table = CapTable::<1>::new();
+        let old = table
+            .mint_root(
+                CALLER,
+                A,
+                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                authority_bounds(),
+                1,
+            )
+            .unwrap();
+        assert!(matches!(
+            g.evaluate(&table, CALLER, old, Some(good(1)), 1),
+            Decision::Advisory(_)
+        ));
+        table.revoke(CALLER, old, 1).unwrap();
+        let reissued = table
+            .mint_root(
+                CALLER,
+                A,
+                Rights::UPDATE.union(Rights::DELEGATE).union(Rights::REVOKE),
+                authority_bounds(),
+                1,
+            )
+            .unwrap();
+        assert_ne!(old.raw(), reissued.raw());
+        assert_eq!(
+            g.evaluate(&table, CALLER, reissued, Some(good(2)), 2),
             Decision::Baseline(Rejection::Unauthorized)
         );
     }
