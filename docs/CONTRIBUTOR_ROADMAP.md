@@ -29,5 +29,14 @@ This is a research sequence, not a release schedule. Work is tracked in issues a
 - [Architecture ADR PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3) contains candidate designs, **not implemented guarantees**.
 - [Research issue #4](https://github.com/bit-foundry-labs/embers-kernel/issues/4) defines the initial benchmark questions.
 
+## Available first contributions
+
+- [#8: independent Ubuntu/WSL QEMU reproduction](https://github.com/bit-foundry-labs/embers-kernel/issues/8), documentation-only.
+- [#33: inventory early boot `unsafe` boundaries](https://github.com/bit-foundry-labs/embers-kernel/issues/33), documentation-only.
+- [#34: conflicting fault-feature negative-path tests](https://github.com/bit-foundry-labs/embers-kernel/issues/34), narrowly scoped Rust.
+- [#9: tested QEMU CPU baseline matrix](https://github.com/bit-foundry-labs/embers-kernel/issues/9), intermediate architecture/compatibility.
+
+Claim an issue by commenting with your intended approach and environment. Each issue has testable acceptance criteria. Do not boot on physical hardware.
+
 ## Definition of a good first issue
 An expected result, a bounded number of files, concrete tests, and an explicit limitation. Missing performance data is an invitation to measure, not invent numbers.
