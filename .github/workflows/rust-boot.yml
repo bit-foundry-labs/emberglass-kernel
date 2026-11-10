@@ -35,6 +35,8 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --release --offline -- -D warnings
+      - name: Test serial diagnostic failure paths on host
+        run: make rust-serial-test
       - name: Build and inspect ELF then ISO
         run: make rust-iso
       - name: Boot QEMU and verify Rust READY
