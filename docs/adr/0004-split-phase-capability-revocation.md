@@ -1,7 +1,7 @@
 # ADR-0004: Split-phase capability revocation with explicit quiescence
 
-**Date:** 2026-11-08  
-**Status:** Proposed; not implemented in the bootable kernel or formally proved  
+**Date:** 2026-11-08
+**Status:** Proposed; not implemented in the bootable kernel or formally proved
 **Related:** [ADR-0002](0002-native-inference-capability-contract.md), [ADR-0003](0003-ai-policy-validation-and-admission.md), [Research Review 06](../research/2026-11-concurrent-revocation-fairness-proof-scope.md), [TLA+ research task #14](https://github.com/bit-foundry-labs/embers-kernel/issues/14), draft [PR #11](https://github.com/bit-foundry-labs/embers-kernel/pull/11).
 
 ## Decision proposal

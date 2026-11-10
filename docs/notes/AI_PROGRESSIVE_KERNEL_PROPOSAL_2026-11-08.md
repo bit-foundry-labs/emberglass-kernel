@@ -1,7 +1,7 @@
 # Original AI-progressive kernel blueprint (research input)
 
-**Captured:** 2026-11-08  
-**Status:** Source proposal, **not** an approved or independently verified technical specification.  
+**Captured:** 2026-11-08
+**Status:** Source proposal, **not** an approved or independently verified technical specification.
 **Purpose:** Preserve the concepts supplied in the discussion so that changes can be compared with the original.
 
 > Designing the "best" operating system kernel depends heavily on your target goals (e.g., throughput, real-time latency, or extreme security). However, to build a modern, high-performance kernel that can progressively and safely incorporate AI, the industry is shifting toward a hybrid Microkernel/Component-Based architecture utilizing modern memory-safe systems languages (like Rust).
