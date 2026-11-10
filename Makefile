@@ -44,3 +44,10 @@ rust-memory-test:
 	cd rust-kernel && rustc --edition=2021 --test src/memory.rs -o ../build/embers-memory-host-tests
 	./build/embers-memory-host-tests
 
+# Host-only unit and adversarial tests for the fixed-capacity ownership ledger.
+.PHONY: rust-ledger-test
+rust-ledger-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test tests/frame_ledger_host.rs -o ../build/embers-frame-ledger-tests
+	./build/embers-frame-ledger-tests
+

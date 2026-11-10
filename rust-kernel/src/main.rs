@@ -5,6 +5,7 @@
 
 mod arch;
 mod boot_memory;
+mod frame_ledger;
 mod memory;
 
 use core::arch::asm;
@@ -195,6 +196,62 @@ fn check_boot_memory() {
     serial_write("MEMORY: remaining pages in selected span = ");
     serial_write_hex(pool.remaining());
     serial_write("\n");
+
+    // BSP-only demonstration: this ledger does not control CPU/IOMMU mappings.
+    let mut ledger = match frame_ledger::FrameLedger::<8>::from_pool(&mut pool) {
+        Ok(ledger) => ledger,
+        Err(_) => {
+            serial_write("ERROR: frame ownership ledger initialization failed\n");
+            halt_forever()
+        }
+    };
+    let Some(kernel_owner) = frame_ledger::OwnerId::new(1) else {
+        halt_forever()
+    };
+    let Some(service_owner) = frame_ledger::OwnerId::new(2) else {
+        halt_forever()
+    };
+    let first = match ledger.acquire(kernel_owner) {
+        Ok(token) => token,
+        Err(_) => {
+            serial_write("ERROR: kernel frame ownership claim failed\n");
+            halt_forever()
+        }
+    };
+    let second = match ledger.acquire(service_owner) {
+        Ok(token) => token,
+        Err(_) => {
+            serial_write("ERROR: service frame ownership claim failed\n");
+            halt_forever()
+        }
+    };
+    if ledger.physical_address(first, service_owner)
+        != Err(frame_ledger::LedgerError::WrongOwner)
+    {
+        serial_write("ERROR: cross-owner frame access was accepted\n");
+        halt_forever();
+    }
+    if ledger.quarantine(first, kernel_owner).is_err()
+        || ledger.physical_address(first, kernel_owner)
+            != Err(frame_ledger::LedgerError::Quarantined)
+        || ledger.quarantined_count() != 1
+        || ledger.available_count() != 6
+    {
+        serial_write("ERROR: ownership quarantine invariant failed\n");
+        halt_forever();
+    }
+    serial_write("OWNERSHIP: owner 2 frame = ");
+    let service_frame = match ledger.physical_address(second, service_owner) {
+        Ok(address) => address,
+        Err(_) => {
+            serial_write("ERROR: owner 2 cannot access own frame\n");
+            halt_forever()
+        }
+    };
+    serial_write_hex(service_frame);
+    serial_write("\n");
+    serial_write("OWNERSHIP: cross-owner access rejected\n");
+    serial_write("OWNERSHIP: quarantined frame blocked from reuse\n");
 }
 
 fn serial_write_hex(value: u64) {
