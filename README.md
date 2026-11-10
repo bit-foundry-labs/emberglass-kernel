@@ -22,14 +22,17 @@ Embers Kernel is **separate from Emberglass OS**, a Linux-based Rust operating-s
 
 ## Where the code actually stands
 
-This integration introduces the first **bootable Rust `no_std` x86-64 kernel entry** on the default branch. It prints a diagnostic `READY` marker in QEMU, but **does not yet implement user-mode execution, protected page tables, capabilities, IPC, or scheduling**. More advanced boot experiments remain in stacked, draft PRs:
+The default branch **boots a freestanding Rust `no_std` kernel in headless QEMU** and includes early exception handling and physical-frame bookkeeping. It is not yet a protected microkernel.
 
-| Track | Experimental work | Status |
+| Milestone | On `main` | Evidence |
 | --- | --- | --- |
-| Rust `no_std` boot | Limine handoff, minimal UART diagnostics, freestanding x86-64 ELF | M02: reproducible on `main` after this PR merges |
-| Architecture | Proposed capability boundaries, resource budgets, and AI policy separation | [PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), not merged |
-| Rust policy research | Host-testable `no_std`-compatible validation and CPU-admission *model* | [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not a running kernel |
-| Rust boot progression | Exception traps and physical frame accounting experiments | [PRs #21–#23](https://github.com/bit-foundry-labs/embers-kernel/pulls), stacked and under review |
+| M02: Rust boot | Limine loads the ELF, bounded COM1 diagnostics, `READY` | [#26](https://github.com/bit-foundry-labs/embers-kernel/pull/26) |
+| M03: CPU exceptions | Kernel GDT/TSS/IDT; deliberate #UD, #PF and #DF QEMU tests | [#27](https://github.com/bit-foundry-labs/embers-kernel/pull/27) |
+| M04: memory map | Validate Limine descriptors; bounded, unique physical-frame accounting | [#28](https://github.com/bit-foundry-labs/embers-kernel/pull/28) |
+| M05: frame ledger | Fixed-capacity symbolic owners, cross-owner rejection and **permanent quarantine** | [#29](https://github.com/bit-foundry-labs/embers-kernel/pull/29) |
+| Proposed research | Capability and AI-aware resource policy architecture | [ADR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), [policy model #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not kernel features |
+
+**Not implemented:** kernel-owned page tables, hardware-enforced user/kernel isolation, ring-3 processes, syscalls, IPC, authenticated capability enforcement, DMA/IOMMU quiescence or a deterministic multitasking scheduler. Frame ledger owner IDs are internal demonstration labels, not secure process identities.
 
 A passing QEMU or host-test check proves only the tested milestone. It does **not** establish hardware isolation, kernel-level capability enforcement, production security, scheduler superiority, or a functioning AI operating system.
 
@@ -53,7 +56,16 @@ qemu-system-x86_64 -cpu max -m 256M -cdrom build/embers-rust.iso \
 
 The serial log should contain `READY: Embers Rust no_std entry reached.`. The intentionally halted kernel keeps QEMU running; stop the emulator with Ctrl+C. `-cpu max` is only the verified emulator profile, not a minimum hardware requirement. Both CI evidence and unsafe assumptions are described in [the Rust boot notes](rust-kernel/README.md).
 
-The earlier C prototype remains accessible as the separate [PR #2 research reference](https://github.com/bit-foundry-labs/embers-kernel/pull/2). It is **not** required to build or execute the Rust kernel.
+Run the pure-Rust memory and ownership tests independently of QEMU:
+
+```bash
+make rust-memory-test
+make rust-ledger-test
+```
+
+For the four-mode exception smoke test, see [M03 exception instructions](rust-kernel/M03_EXCEPTIONS.md); for allocation and ownership semantics see [M04](rust-kernel/M04_PHYSICAL_MEMORY.md) and [M05](rust-kernel/M05_FRAME_LEDGER.md). The [CI workflows](.github/workflows/) run these against supported development-emulator configurations.
+
+The earlier C prototype remains accessible as [historical PR #2](https://github.com/bit-foundry-labs/embers-kernel/pull/2). It is **not** required to build or execute the Rust kernel.
 
 For the host-only policy experiment, check out [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6) and run `cargo test` in `experiments/rust-policy-guard`. That does not execute a privileged Rust kernel.
 

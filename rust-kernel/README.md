@@ -1,4 +1,4 @@
-# Embers Kernel M02: Rust-only Limine/QEMU entry
+# Embers Kernel: Rust-only Limine/QEMU research baseline
 
 This is an original, freestanding Rust no_std x86-64 kernel entry, loaded
 directly by **Limine**. Limine is an external bootloader; there is no
@@ -47,5 +47,18 @@ or paid APIs are involved.
 - The ELF script verifies structure; CI's QEMU READY assertion is
   separate execution evidence, not production hardware validation.
 
-Next: GDT/TSS/IDT and fault injection (M03), then memory-map
-validation and ownership ledgers (M04/M05).
+## Verified follow-on milestones
+
+- [M03](M03_EXCEPTIONS.md): kernel GDT/TSS/IDT and QEMU exception fault tests.
+- [M04](M04_PHYSICAL_MEMORY.md): Limine map validation and monotonic frame accounting.
+- [M05](M05_FRAME_LEDGER.md): bounded symbolic frame owners and quarantine-only
+  transitions. This demonstration is not persistent hardware ownership.
+
+Run host tests from repository root:
+
+    make rust-memory-test
+    make rust-ledger-test
+
+The next major isolation milestone requires persistent frame ownership and
+kernel-controlled page tables; then a validated ring-3 boundary and IPC.
+These do not exist in the current kernel.
