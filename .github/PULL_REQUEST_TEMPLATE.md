@@ -21,6 +21,8 @@ What changed, and which trust boundary or kernel mechanism does it touch?
 - [ ] Formatting, compiler warnings, and language-appropriate lint checks pass.
 - [ ] Tests demonstrate the claimed behavior; a simulated or model-checked property is not described as a proved kernel guarantee.
 - [ ] I checked the patch for unnecessary duplication, unused code, whitespace and secrets.
+- [ ] I used complete, grammatically correct sentences and professional language in the description, documentation, and explanatory code comments.
+- [ ] My comments explain invariants, safety assumptions, or non-obvious intent rather than restating the code.
 
 ## Safety and limitations
 

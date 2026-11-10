@@ -29,6 +29,20 @@ If changing APIs, provide the invariant being enforced, the trust boundary, fail
 
 Do not change unrelated code, disable failing tests, commit model credentials, include proprietary model weights, or add network/API spending as an undocumented dependency.
 
+## Professional communication and technical writing
+
+Write all contributor-facing prose in **clear, complete, grammatically correct sentences**. This standard applies to README files, architecture and research notes, issue descriptions, pull-request descriptions, review discussions, commit messages where prose is used, Rust documentation comments, and explanatory inline code comments.
+
+- Use a professional, respectful, evidence-based tone. Avoid slang, sarcasm, insults, dismissive language, and exaggerated claims about correctness or performance.
+- Explain technical decisions precisely. State the assumption, invariant, reason for a non-obvious operation, and known limitations when they affect correctness or safety.
+- Prefer concise sentences and established Rust and operating-systems terminology. Define project-specific abbreviations at first use; proofread grammar, punctuation, spelling, and links before requesting review.
+- Write explanatory code comments as complete sentences with appropriate capitalization and terminal punctuation. Headings, identifiers, API names, register names, diagnostic strings, table entries, and code examples are not required to be sentences.
+- Comment **why** a mechanism or boundary exists, rather than narrating self-evident code. Keep comments accurate when behavior changes; do not introduce decorative or redundant commentary.
+- Document every `unsafe` block with a specific `SAFETY:` rationale. Document the caller's obligations for `unsafe fn` interfaces; do not replace actual proof obligations with confident language.
+- Report tests exactly as executed. Distinguish host-model behavior, QEMU evidence, and unverified hardware assumptions. Do not invent test results, security guarantees, or citations.
+
+Reviewers should request revisions for unclear or unprofessional writing just as they would for ambiguous APIs. This is a quality standard, not a requirement for contributors to be native English speakers; constructive language assistance and editorial corrections are welcome.
+
 ## Merge readiness
 
 Before a change to `main` is merged, check the `whitespace`,
@@ -48,6 +62,7 @@ CI passing and an active protection ruleset are separate verification steps.
 - [ ] I differentiated simulation from real kernel behavior and hardware-specific guarantees.
 - [ ] No secrets, third-party licensing violations, or unexpected downloads.
 - [ ] I verified build/test behavior on the specific branch I changed.
+- [ ] I proofread prose and explanatory code comments for complete sentences, correct grammar, professional tone, and technical accuracy.
 
 ## Compatibility, contribution rights, and credit
 
