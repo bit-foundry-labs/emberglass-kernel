@@ -2,8 +2,8 @@
 
 **Date:** 2026-11-08
 **Status:** Research proposal, not kernel-implemented or formally proved.
-**Project:** Emberglass original Rust capability microkernel (Bit Foundry Labs)
-**Context:** ADR-0001/0002/0003, draft [capability-table PR #11](https://github.com/bit-foundry-labs/emberglass-kernel/pull/11), independent [threat model PR #13](https://github.com/bit-foundry-labs/emberglass-kernel/pull/13).
+**Project:** Embers Kernel, original Rust capability-microkernel research (Bit Foundry Labs)
+**Context:** ADR-0001/0002/0003, draft [capability-table PR #11](https://github.com/bit-foundry-labs/embers-kernel/pull/11), independent [threat model PR #13](https://github.com/bit-foundry-labs/embers-kernel/pull/13).
 
 ## User-supplied research hypotheses
 
@@ -55,7 +55,7 @@ The apparent order of operations is illustrative: an implementation must avoid g
 - A stale TLB/IOTLB is relevant when a *memory mapping* is revoked, not for every logical capability operation.
 - Explicitly model a caller with a valid cached AuthorizedPolicy snapshot racing with revocation. A safe type alone is not proof against this TOCTOU race.
 
-**Current PR #11 gaps:** host-testable CapTable, generational handles and owner checks are helpful, but caller SpaceId is supplied by the test harness; mint_root is public at the library boundary (kernel-only by intended integration), revoked memory is not mapped to hardware, and evaluate returns a ValidatedPolicy snapshot. There is no atomic validation-to-hardware-application contract. Cross-session policy replay interference was previously reported in the PR. No protection guarantee carries into a real kernel before user/kernel address-space separation and syscall caller authentication exist.
+**Draft PR #11 gaps:** Host-testable CapTable, generational handles, and owner checks are useful modeling mechanisms, but caller `SpaceId` is supplied by the test harness; `mint_root` is public at the research library boundary (kernel-only by intent); and revoked memory is not mapped to hardware. PR #17 proposes an alternative explicit policy-binding API, but neither branch implements trusted kernel authorization. There is no atomic validation-to-hardware-application contract. Cross-session policy replay interference was previously reported in the PR. No protection guarantee carries into a real kernel before user/kernel address-space separation and syscall caller authentication exist.
 
 ## Decision C: resource fairness is not synonymous with capped AI priority
 
@@ -80,7 +80,7 @@ The apparent order of operations is illustrative: an implementation must avoid g
 
 TLC supports finite-state exploration and temporal liveness checking, but liveness checks need fairness assumptions and suitable temporal specifications. General statements that model checking proves freedom from all deadlocks, infinite interleavings or real hardware races are incorrect.
 
-seL4 proof assumptions explicitly exclude or model-away some DMA, cache/TLB and timing behavior; SMP verification remains separate from proven uniprocessor configurations. These sources are architectural evidence, not proof of Emberglass.
+seL4 proof assumptions are configuration-specific; hardware and concurrency proof scopes must be evaluated precisely before drawing comparisons. These sources are architectural references, not proof of Embers Kernel.
 
 ## First model-checking experiment
 

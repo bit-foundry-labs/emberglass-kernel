@@ -1,8 +1,10 @@
 # ADR-0003: Capability-constrained AI policies, typed validation and CPU admission control
 
-**Status:** Proposed. Architectural research only, pending Rust tests and kernel integration.
-**Date:** 2026-11-08
-**Inputs:** User-supplied AI Policy Validation blueprint (../notes/AI_POLICY_VALIDATION_BLUEPRINT_2026-11-08.md), ADR-0001 and ADR-0002.
+**Status:** Proposed; not implemented in the privileged kernel.
+**Created:** 2026-11-08
+**Baseline reviewed:** 2026-11-10
+**Inputs:** [Historical AI policy validation proposal](../notes/AI_POLICY_VALIDATION_BLUEPRINT_2026-11-08.md), [ADR-0001](0001-capability-microkernel-and-ai-policy.md), and [ADR-0002](0002-native-inference-capability-contract.md).
+**Related experiment:** [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6) models policy validation and CPU-admission checks in host-tested Rust, separately from the privileged kernel.
 
 ## Decision proposal
 Adopt two separate contracts:
@@ -25,9 +27,9 @@ For multiple CPUs and real-time deadlines, this simple condition is only a neces
 seL4 MCS scheduling contexts enforce *upper* budget/period limits; its documentation cautions that they are not lower bounds. Zircon has fair and deadline scheduling disciplines and requires feasible deadline demand.
 
 ## Authorization model
-The untrusted AI's message contains resource ID, caller identity, proposed weight/budget/placement, expiry epoch and nonce/version. The kernel resolves the caller's opaque capability in a protected table, checks target binding and allowed rights, then validates resource constraints.
+A proposed policy message may contain a resource identifier, proposed weight/budget/placement, expiry epoch, and nonce/version. **The message must not supply authoritative caller identity.** A future kernel must derive that identity from protected thread or IPC context, resolve a capability in the caller's protected table, check target binding and rights, and then validate resource constraints.
 
-Private constructors and typestate eliminate accidental misuse within safe Rust, but not automatically forged IPC byte streams. The protected kernel handle table, caller address-space isolation, parsing, rights checks and proven revocation semantics establish the runtime boundary.
+Private constructors and typestate can reduce accidental misuse within safe Rust, but cannot authenticate a caller or prevent forged IPC byte streams. The proposed enforcement boundary requires real address-space isolation, trusted caller identity, protected capability lookup, input parsing, rights checks, and properly synchronized revocation. None currently exists in the booted Embers kernel.
 
 Invalid policy suggestions should be rejected with logged reasons, not silently clamped: silently changing proposed values can conceal model failure and complicate replay/debugging.
 
@@ -42,7 +44,7 @@ Invalid policy suggestions should be rejected with logged reasons, not silently 
 - Queue bounds, stale completion safety and explicit model failure handling are preserved.
 
 ## Rust implementation strategy
-- Start with a host-tested Rust no_std-compatible reference *validator* crate. No external dependencies.
+- Maintain the separate host-tested Rust `no_std`-compatible reference *validator* in [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6). It is research code, not kernel enforcement.
 - Introduce private ValidatedPolicy; check capability scope, revision/expiry, weight, quotas and admission feasibility.
 - Simulate invalid proposals and multi-tenant overload, return typed errors and baseline fallback.
 - Use CI cargo test plus clippy, and optionally Kani bounded model checking for finite-state invariants.
@@ -62,4 +64,4 @@ Rust memory safety does not prove system-wide liveness or eliminate side channel
 - Kani verifier: https://model-checking.github.io/kani/
 - Verus project: https://www.microsoft.com/en-us/research/project/practical-system-verification/
 
-**Status note:** This ADR has not been accepted or implemented in the bootable kernel. A host-only experiment is a first step, not a demonstrated kernel guarantee.
+**Status note:** This ADR remains a proposal. Even if its host-only policy experiment is merged, that does not implement kernel caller authentication, scheduling fairness, or resource isolation.

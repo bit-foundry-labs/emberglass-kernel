@@ -1,6 +1,6 @@
 # Source proposal: AI policy validation and Rust typestate
 
-Captured 2026-11-08. User-supplied architectural argument, preserved as a structured summary rather than an independently verified specification.
+Captured November 8, 2026. This is an archived architectural argument, not an independently verified specification or an implemented Embers Kernel subsystem. The current research baseline is a standalone Rust policy model in [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), separate from the booted kernel.
 
 ## Thesis
 A Rust capability-based microkernel could allow user-space AI to recommend CPU, memory and accelerator settings while deterministic kernel mechanisms and protected capabilities implement changes.

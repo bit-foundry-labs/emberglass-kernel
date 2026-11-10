@@ -9,7 +9,7 @@
 
 Make inference a **native, capability-protected OS service**, not a model-specific kernel fast path.
 
-The original Rust microkernel controls address spaces, thread scheduling, generic resource quotas, kernel handle/rights tables, IPC, protected memory grants, interrupts and later DMA isolation. User-space inference services manage model artifacts, weights, tensor formats, driver-specific queues and model selection. A user-space adaptive policy service proposes restricted updates; the kernel never waits for it to schedule ordinary CPU threads.
+In the proposed architecture, the **future** Rust microkernel would control address spaces, thread scheduling, generic resource quotas, kernel handles and rights, IPC, protected memory grants, and interrupts. DMA isolation would require separate device- and IOMMU-aware work. User-space inference services would manage model artifacts, weights, tensor formats, device queues, and model selection. A user-space adaptive policy service could recommend restricted updates, but normal CPU dispatch must never wait for model inference. **None of these service or isolation interfaces is implemented on `main` today.**
 
 ~~~text
 Application / desktop / ForgeLoop agent
@@ -135,7 +135,7 @@ Invariants to test:
 5. Delayed accelerator completion after revocation cannot cause use-after-free or unauthorized remapping.
 6. Resource and policy transitions have stable audit identifiers and can be replayed under controlled events.
 
-seL4 formal proofs are configuration- and assumption-specific, not inherited by Emberglass. They do not imply complete elimination of side channels or correct behavior of proprietary GPUs. Rust safe code helps memory safety, but unsafe drivers, assembly and system-wide liveness require independent evidence.
+seL4 formal proofs are configuration- and assumption-specific, not inherited by Embers Kernel. They do not imply complete elimination of side channels or correct behavior of proprietary GPUs. Rust safe code helps memory safety, but unsafe drivers, assembly and system-wide liveness require independent evidence.
 
 CHERI offers useful pointer-capability protection, but hardware availability, temporal safety and performance vary. It should be studied as a future hardware backend, **not** a requirement for the x86-64 QEMU prototype.
 
@@ -168,4 +168,4 @@ CHERI offers useful pointer-capability protection, but hardware availability, te
 
 ## Status
 
-Architectural research only. It neither implements an AI-enabled kernel nor alters PR #2's verified C boot baseline. Review alongside ADR-0001 before adopting.
+Architectural research only. Embers Kernel currently has a bootable Rust/QEMU foundation with early exception handling and symbolic frame accounting, but it has **no user-space inference broker, IPC, scheduling contexts, or hardware-enforced process isolation**. The historical C bootstrap in PR #2 is not part of the running Rust kernel. Review this proposal alongside ADR-0001 before adoption.

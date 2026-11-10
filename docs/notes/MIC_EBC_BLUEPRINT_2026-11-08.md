@@ -2,7 +2,7 @@
 
 **Captured:** 2026-11-08
 **Origin:** User-supplied architecture proposal
-**Status:** Research input; claims and guarantees require evaluation.
+**Status:** Historical research input; claims and guarantees require evaluation. This is not an implemented Embers Kernel interface.
 **Related review:** [ADR-0002](../adr/0002-native-inference-capability-contract.md)
 
 ## Research question

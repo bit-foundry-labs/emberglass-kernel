@@ -1,12 +1,12 @@
 # ADR-0004: Split-phase capability revocation with explicit quiescence
 
 **Date:** 2026-11-08  
-**Status:** Proposed; not implemented in the bootable kernel, not formally proved  
-**Related:** [ADR-0002](0002-native-inference-capability-contract.md), [ADR-0003](0003-ai-policy-validation-and-admission.md), [Research Review 06](../research/2026-11-concurrent-revocation-fairness-proof-scope.md), [TLA+ research task #14](https://github.com/bit-foundry-labs/emberglass-kernel/issues/14), draft [PR #11](https://github.com/bit-foundry-labs/emberglass-kernel/pull/11).
+**Status:** Proposed; not implemented in the bootable kernel or formally proved  
+**Related:** [ADR-0002](0002-native-inference-capability-contract.md), [ADR-0003](0003-ai-policy-validation-and-admission.md), [Research Review 06](../research/2026-11-concurrent-revocation-fairness-proof-scope.md), [TLA+ research task #14](https://github.com/bit-foundry-labs/embers-kernel/issues/14), draft [PR #11](https://github.com/bit-foundry-labs/embers-kernel/pull/11).
 
 ## Decision proposal
 
-Adopt **split-phase capability revocation** as the target protocol for Emberglass. Distinguish three contracts, all explicitly scoped:
+Evaluate **split-phase capability revocation** as the target protocol for Embers Kernel. Distinguish three contracts, all explicitly scoped:
 
 1. **Close admission:** atomically mark the capability and its derivation scope as no longer authorizing *new* operations at a linearization point, under a protected kernel synchronization mechanism.
 2. **Drain previously admitted work:** let tracked operations complete/cancel safely, without permitting those operations to regain revoked authorization or to allocate additional rights *from the revoked capability*.
@@ -18,7 +18,7 @@ The fast admission path should not wait for AI inference or device completion. T
 
 A handle-generation check solves stale handle reuse but **not** use of an already authorized, copied policy snapshot after revocation, nor pending device DMA to reclaimed pages. CPU epoch-based reclamation can protect participating CPU readers, but a PCIe device will not automatically participate in a CPU grace period.
 
-The initial host-only Rust CapTable (PR #11) models rights, generations, expiry and eager descendant invalidation. It does not yet model admission-hold tokens, in-flight operation tracking, physical buffer ownership, device fences, multicore ordering, or a safe handle-table/lifetime synchronization protocol. Do not represent the current model as implementing this ADR.
+The draft, host-only Rust CapTable ([PR #11](https://github.com/bit-foundry-labs/embers-kernel/pull/11)) models rights, generations, expiry, and eager descendant invalidation. It does not yet model admission-hold tokens, in-flight operation tracking, physical buffer ownership, device fences, multicore ordering, or a safe handle-table/lifetime synchronization protocol. Do not represent the current model as implementing this ADR.
 
 ## State machine
 
@@ -125,7 +125,7 @@ An IOMMU provides a mapping/isolation mechanism, not a universal rule that cache
 
 ## Research sequence
 
-1. Model two cores and one device, with authorization and revocation racing in a small TLA+ or equivalent finite-state machine. Explicitly explore vulnerable check-then-use and stale-reuse traces.
+1. Review the finite-state TLA+ experiment in [PR #15](https://github.com/bit-foundry-labs/embers-kernel/pull/15), including its intentionally unsafe counterexample, model assumptions, and reachable-state limits. A successful model check is not proof of the Rust implementation.
 2. Write safety invariants and conditional liveness properties, with model checker configs and reproducible traces.
 3. In host-tested Rust, add a simulated AdmissionHold / RevokeTicket / Quarantine API, guard state transitions, and negative tests for delayed device completion and revocation while policy snapshot is cached.
 4. Only after protected address spaces, trusted syscall caller identity, and kernel IPC exist, port the mechanism to original Rust kernel.

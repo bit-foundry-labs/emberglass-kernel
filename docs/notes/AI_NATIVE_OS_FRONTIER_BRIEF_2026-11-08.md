@@ -1,4 +1,4 @@
-# Source brief: five frontier ideas for an AI-native Emberglass OS
+# Historical source brief: five AI-native operating-system research ideas
 
 **Captured:** 2026-11-08
 **Origin:** User-supplied architectural exploration in Bit Foundry conversation
@@ -40,4 +40,4 @@ The source exploration argued that an AI-integrated OS should treat models and h
 
 ## Preservation note
 
-The above is a faithful topical transcription of the supplied ideas, not a verbatim copy of the entire chat message. The companion research document distinguishes supported work, speculative claims, architectural hazards and experiment plans so that future Emberglass discussions do not confuse the original proposal with adopted design decisions.
+The above is a faithful topical transcription of the supplied ideas, not a verbatim copy of the entire chat message. The companion research document distinguishes supported work, speculative claims, architectural hazards and experiment plans so that future Embers Kernel discussions do not confuse the historical proposal with adopted design decisions.

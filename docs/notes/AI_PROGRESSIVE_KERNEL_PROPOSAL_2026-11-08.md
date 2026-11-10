@@ -50,8 +50,8 @@ Research vision of replacing selected memory/cache heuristics with tiny accelera
 - Theoretical research or active prototyping?
 - Hardware preference: ARM, x86, RISC-V?
 
-## Confirmed Emberglass-specific context
+## Historical project context (November 8, 2026)
 
-The project is **an original OS kernel**, first targeting **x86-64 desktop / QEMU**, under Bit Foundry Labs. It is **active code development**. The earlier original C bootstrap compiled and reached serial READY in a BIOS QEMU run with an explicit CPU model. A Linux-based AI desktop remains a separate interim product path; the eventual original kernel must not be confused with a fork of Linux.
+This section records context from November 8, 2026, when the kernel was still referred to as Emberglass. The project is now **Embers Kernel**, separate from Linux-based Emberglass OS. The earlier C bootstrap is preserved as historical PR #2; the current `main` branch boots Rust `no_std` in QEMU and contains exception diagnostics and early physical-memory accounting. This archival note is not the project's current implementation specification.
 
 For corrections to the proposal's claims and the recommended direction, see [ADR-0001](../adr/0001-capability-microkernel-and-ai-policy.md).
