@@ -13,6 +13,25 @@ This is a practical quality standard for a new systems-programming research proj
 7. **Concurrency.** Declare the linearization point for authorization/revocation, invariants about held references, and whether locks/epochs protect operations. Timeouts alone do not establish device quiescence. Use model checking to complement, not replace, concrete Rust kernel tests.
 8. **Reproducibility.** Pin critical tooling and document commands, emulator CPU profile, and benchmark environment. Prefer a single reliable entry command to a multi-stage undocumented manual process.
 
+## Written engineering communication
+
+Treat technical writing as part of the software interface, not as decoration.
+Require complete, grammatically correct sentences in explanatory code comments,
+Rust API documentation, design decisions, pull requests, issue discussions,
+and contributor-facing documentation. Keep wording professional and precise.
+Headings, register names, short labels, and source identifiers may be fragments.
+
+Explanations should describe the relevant invariant, failure mode, trusted
+precondition, or reason for a non-obvious operation. Every `unsafe` site
+needs a concrete `SAFETY:` justification; an `unsafe fn` must also explain
+its caller obligations. Avoid comments that merely repeat an expression.
+Do not overstate host-only tests or emulator observations as hardware or
+security guarantees.
+
+When language can be clearer, request a specific edit respectfully.
+Professional prose is expected; native-level fluency is not a prerequisite
+for contributing. See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 ## Concrete checks currently available
 
 | Component | Automated evidence | Scope |
