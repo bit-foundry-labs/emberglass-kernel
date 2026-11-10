@@ -1,0 +1,78 @@
+name: Embers M04 physical memory map and frame ledger
+
+on:
+  push:
+    paths:
+      - "rust-kernel/**"
+      - "Makefile"
+      - ".github/workflows/rust-memory.yml"
+  pull_request:
+    paths:
+      - "rust-kernel/**"
+      - "Makefile"
+      - ".github/workflows/rust-memory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install QEMU and ISO prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+      - name: Format and lint Rust kernel
+        working-directory: rust-kernel
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --release --offline -- -D warnings
+      - name: Test pure frame-ledger invariants on host
+        run: make rust-memory-test
+      - name: Build freestanding Rust ELF and Limine ISO
+        run: make rust-iso
+      - name: Boot and check two aligned unique ledger claims
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=2s 12s \
+            qemu-system-x86_64 -cpu max -m 256M \
+              -cdrom build/embers-rust.iso -display none \
+              -d int,guest_errors -D build/m04-qemu.log \
+              -serial file:build/m04-serial.log \
+              -monitor none -no-reboot -no-shutdown
+          status=$?
+          set -e
+          echo "QEMU status: $status"
+          cat build/m04-serial.log
+          if [[ "$status" -ne 0 && "$status" -ne 124 ]]; then
+            exit 1
+          fi
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          serial = Path("build/m04-serial.log").read_text()
+          assert "ERROR:" not in serial
+          assert "MEMORY: validated Limine map for physical frame accounting" in serial
+          assert "READY: Embers Rust no_std entry reached." in serial
+          values = re.findall(
+              r"MEMORY: frame claim [12] = 0x([0-9a-f]{16})", serial
+          )
+          assert len(values) == 2, f"expected two frame addresses, got {values!r}"
+          first, second = (int(value, 16) for value in values)
+          assert first >= 0x100000 and first % 4096 == 0
+          assert second == first + 4096, "claims must be unique and consecutive"
+          print("PASS: two unique, page-aligned, consecutive physical ledger claims")
+          PY
+      - name: Preserve boot and exception evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: embers-m04-memory-logs
+          path: |
+            build/m04-serial.log
+            build/m04-qemu.log
+          if-no-files-found: ignore

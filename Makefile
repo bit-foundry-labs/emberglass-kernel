@@ -37,3 +37,10 @@ rust-iso: rust-check
 rust-run: rust-iso
 	qemu-system-x86_64 -cpu max -m 256M -cdrom build/embers-rust.iso -serial stdio -no-reboot -no-shutdown
 
+# Host-side tests of the pure no_std frame-accounting logic.
+.PHONY: rust-memory-test
+rust-memory-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test src/memory.rs -o ../build/embers-memory-host-tests
+	./build/embers-memory-host-tests
+
