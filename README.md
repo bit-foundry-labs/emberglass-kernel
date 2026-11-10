@@ -75,10 +75,12 @@ We're looking for contributors interested in **Rust systems programming, kernel 
 
 A useful first contribution is a narrow, verifiable improvement, not a sweeping rewrite:
 
-- [Reproduce the QEMU bootstrap and improve troubleshooting](https://github.com/bit-foundry-labs/embers-kernel/issues/8)
-- [Document the minimum supported x86-64 CPU features](https://github.com/bit-foundry-labs/embers-kernel/issues/9)
-- [Challenge the capability threat model](https://github.com/bit-foundry-labs/embers-kernel/issues/12)
-- [Help prepare a reproducible, contributor-ready Rust boot baseline](https://github.com/bit-foundry-labs/embers-kernel/issues/24)
+- **First contribution, documentation:** [Reproduce the Rust QEMU boot on a fresh Ubuntu/WSL machine](https://github.com/bit-foundry-labs/embers-kernel/issues/8).
+- **First contribution, code review:** [Document the early-boot `unsafe` contracts](https://github.com/bit-foundry-labs/embers-kernel/issues/33).
+- **Intermediate, testing:** [Reject conflicting QEMU fault-injection features](https://github.com/bit-foundry-labs/embers-kernel/issues/34).
+- **Intermediate, architecture:** [Measure the Rust kernel's tested x86-64 CPU baseline](https://github.com/bit-foundry-labs/embers-kernel/issues/9).
+
+For deeper research, see the [capability threat-model task](https://github.com/bit-foundry-labs/embers-kernel/issues/12) and the [contributor-launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24).
 
 Read [the contribution guide](CONTRIBUTING.md), [research roadmap](docs/CONTRIBUTOR_ROADMAP.md), [review standard](docs/CODE_REVIEW_STANDARD.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Comment on an issue before undertaking substantial work.
 
