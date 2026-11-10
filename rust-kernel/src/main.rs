@@ -4,6 +4,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 mod arch;
+mod boot_memory;
+mod memory;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
@@ -110,6 +112,7 @@ pub extern "C" fn kernel_entry() -> ! {
     // SAFETY: This is the single BSP at CPL0, with interrupts still disabled.
     unsafe { arch::install() };
     serial_write("BOOT: x86-64 GDT/TSS/IDT installed\n");
+    check_boot_memory();
 
     #[cfg(feature = "fault-ud")]
     {
@@ -141,6 +144,57 @@ pub extern "C" fn kernel_entry() -> ! {
     #[cfg(not(any(feature = "fault-ud", feature = "fault-pf", feature = "fault-df")))]
     serial_write("READY: Embers Rust no_std entry reached.\n");
     halt_forever()
+}
+
+fn check_boot_memory() {
+    let mut pool = match boot_memory::initial_frame_pool() {
+        Ok(pool) => pool,
+        Err(boot_memory::BootMapError::NoResponse) => {
+            serial_write("ERROR: Limine memory map response missing\n");
+            halt_forever()
+        }
+        Err(boot_memory::BootMapError::InvalidCount) => {
+            serial_write("ERROR: memory map entry count invalid or too large\n");
+            halt_forever()
+        }
+        Err(boot_memory::BootMapError::MissingEntry) => {
+            serial_write("ERROR: memory map contains null entry\n");
+            halt_forever()
+        }
+        Err(boot_memory::BootMapError::InvalidMap(reason)) => {
+            serial_write("ERROR: memory map rejected: ");
+            let description = match reason {
+                memory::MapError::EmptyMap => "empty",
+                memory::MapError::ZeroLength => "zero-length region",
+                memory::MapError::AddressOverflow => "physical address overflow",
+                memory::MapError::OverlappingRegions => "overlapping regions",
+                memory::MapError::InvalidMinimum => "invalid minimum",
+                memory::MapError::NoUsableSpan => "no sufficiently large usable span",
+            };
+            serial_write(description);
+            serial_write("\n");
+            halt_forever()
+        }
+    };
+
+    let Some(first) = pool.claim() else {
+        serial_write("ERROR: first frame ledger claim failed\n");
+        halt_forever()
+    };
+    let Some(second) = pool.claim() else {
+        serial_write("ERROR: second frame ledger claim failed\n");
+        halt_forever()
+    };
+    serial_write("MEMORY: validated Limine map for physical frame accounting\n");
+    serial_write("MEMORY: frame claim 1 = ");
+    serial_write_hex(first);
+    serial_write("\n");
+    serial_write("MEMORY: frame claim 2 = ");
+    serial_write_hex(second);
+    serial_write("\n");
+    serial_write("MEMORY: remaining pages in selected span = ");
+    serial_write_hex(pool.remaining());
+    serial_write("\n");
 }
 
 fn serial_write_hex(value: u64) {
