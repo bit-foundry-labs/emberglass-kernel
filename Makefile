@@ -19,3 +19,10 @@ rust-run: rust-iso
 clean:
 	rm -rf build
 	cd rust-kernel && cargo clean
+
+# Host-only tests for the pure Rust boot memory-map selection and accounting.
+.PHONY: rust-memory-test
+rust-memory-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test src/memory.rs -o ../build/embers-memory-host-tests
+	./build/embers-memory-host-tests
