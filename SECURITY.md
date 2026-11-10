@@ -1,6 +1,6 @@
 # Security policy
 
-Emberglass is an **experimental research kernel**, not a security-hardened OS. Do not use it for secrets, production workloads, or deployment on physical hardware. Kernel, driver and simulator security guarantees are not established by a successful CI run.
+Embers Kernel is an **experimental kernel research project**, not a security-hardened OS. Do not use it for secrets, production workloads, or deployment on physical hardware. Kernel, driver and simulator security guarantees are not established by a successful CI run.
 
 ## Report a possible vulnerability
 Please avoid posting working exploits, credentials, or sensitive traces in a public GitHub issue.

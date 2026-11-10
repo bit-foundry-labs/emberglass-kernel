@@ -1,4 +1,4 @@
-# Emberglass: Source Code Review Standard
+# Embers Kernel · Source Code Review Standard
 
 This is a practical quality standard for a new systems-programming research project. It adapts Robert C. Martin's *Clean Code: A Handbook of Agile Software Craftsmanship* (2008), particularly chapters 2–5, 7–10, 13, and 17, **without treating Java-specific advice as universally applicable to Rust or freestanding C**.
 
@@ -35,8 +35,8 @@ The older C code has inconsistent formatting across files. Do not introduce a bl
 
 ## Current cleanup work
 
-- [UART timeout and negative tests (PR #16)](https://github.com/bit-foundry-labs/emberglass-kernel/pull/16).
-- [Explicit Rust gate binding and named capability specifications (PR #17)](https://github.com/bit-foundry-labs/emberglass-kernel/pull/17).
-- The broader [capability-table implementation (PR #11)](https://github.com/bit-foundry-labs/emberglass-kernel/pull/11) needs synchronization and authorization-to-actuation review before becoming kernel code.
+- [UART timeout and negative tests (PR #16)](https://github.com/bit-foundry-labs/embers-kernel/pull/16).
+- [Explicit Rust gate binding and named capability specifications (PR #17)](https://github.com/bit-foundry-labs/embers-kernel/pull/17).
+- The broader [capability-table implementation (PR #11)](https://github.com/bit-foundry-labs/embers-kernel/pull/11) needs synchronization and authorization-to-actuation review before becoming kernel code.
 
 **License note:** this is an independently written adaptation of engineering principles from the book; it does not reproduce the text or examples of the work.

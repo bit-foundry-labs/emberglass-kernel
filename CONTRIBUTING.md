@@ -1,4 +1,4 @@
-# Contributing to Emberglass
+# Contributing to Embers Kernel
 
 The best first contribution is small enough to explain, test, and review.
 
@@ -9,7 +9,7 @@ The best first contribution is small enough to explain, test, and review.
 3. Prefer one observable behavior per pull request. For security-critical APIs, start with tests and a written threat assumption.
 4. Do not claim mathematical guarantees without a precisely scoped proof, benchmark, or test.
 
-The default branch currently has only initial metadata. **PR #2** contains the QEMU/C reference bootstrap, **PR #3** contains proposed design records, and **PR #6** contains a separate Rust policy simulation. Do not assume they are already merged.
+The default branch currently contains project documentation, not an integrated bootable Rust microkernel. **PR #2** holds the QEMU/C reference bootstrap, **PR #3** proposes architecture, **PR #6** contains a host-tested Rust policy simulation, and **PR #20** begins a stacked Rust boot series. Do not assume that these are merged or independently runnable from `main`.
 
 ## Choose a contribution path
 
@@ -21,8 +21,8 @@ If changing APIs, provide the invariant being enforced, the trust boundary, fail
 
 ## Practical workflow
 
-1. Fork the repository, create a feature branch, and reference an issue.
-2. Reproduce the baseline relevant to your change. For the C bootstrap, follow README QEMU instructions on PR #2. For the Rust policy experiment, run cargo test from PR #6.
+1. Start with an [open issue](https://github.com/bit-foundry-labs/embers-kernel/issues), ideally one with a reproducible expected result. Fork the repository, create a feature branch, and reference the issue.
+2. Reproduce the baseline relevant to your change. For the C bootstrap, use the README's QEMU commands from PR #2. For the Rust policy experiment, run `cargo test` from PR #6. Confirm the parent branch for stacked Rust boot PRs before adding new work.
 3. Implement one scoped change. Add or update tests and concise documentation.
 4. Open a pull request with: problem, approach, limitations, tests run, QEMU log if relevant, and any security impact.
 5. Keep communication respectful. Maintainers may request revisions, defer work, or reject incompatible designs.
