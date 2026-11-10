@@ -17,8 +17,18 @@ segments = subprocess.check_output(["readelf", "-l", str(kernel)], text=True)
 assert "LOAD" in segments, "missing loadable segments"
 for marker in (
     b"EMBERS: Rust no_std",
-    b"READY: Embers Rust no_std entry reached.",
     struct.pack("<QQQ", 0xf9562b2d5c95a6c8, 0x6a7b384944536bdc, 6),
 ):
     assert marker in data, f"missing kernel marker: {marker!r}"
+
+# M03 builds one image at a time: ordinary READY or a deliberate fault.
+mode_markers = (
+    b"READY: Embers Rust no_std entry reached.",
+    b"TEST: intentional invalid opcode",
+    b"TEST: intentional page fault",
+    b"TEST: intentional double fault through blocked #PF gate",
+)
+assert sum(marker in data for marker in mode_markers) == 1, (
+    "expected exactly one normal-boot or fault-injection marker"
+)
 print("PASS: Rust freestanding ELF layout (not a boot result)")

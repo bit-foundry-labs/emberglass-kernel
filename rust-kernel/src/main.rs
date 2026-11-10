@@ -3,6 +3,8 @@
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+mod arch;
+
 use core::arch::asm;
 use core::panic::PanicInfo;
 
@@ -105,7 +107,74 @@ pub extern "C" fn kernel_entry() -> ! {
     }
 
     serial_write("BOOT: Limine base revision accepted\n");
+    // SAFETY: This is the single BSP at CPL0, with interrupts still disabled.
+    unsafe { arch::install() };
+    serial_write("BOOT: x86-64 GDT/TSS/IDT installed\n");
+
+    #[cfg(feature = "fault-ud")]
+    {
+        serial_write("TEST: intentional invalid opcode\n");
+        // SAFETY: Deliberate exception in isolated QEMU testing only.
+        unsafe { asm!("ud2", options(nomem, nostack)) };
+        serial_write("ERROR: #UD test returned unexpectedly\n");
+    }
+
+    #[cfg(feature = "fault-pf")]
+    {
+        serial_write("TEST: intentional page fault\n");
+        // SAFETY: Deliberate exception in isolated QEMU testing only.
+        unsafe { arch::trigger_page_fault() };
+        serial_write("ERROR: #PF test returned unexpectedly\n");
+    }
+
+    #[cfg(feature = "fault-df")]
+    {
+        serial_write("TEST: intentional double fault through blocked #PF gate\n");
+        // SAFETY: Disable #PF delivery in the QEMU test to induce a #DF.
+        unsafe {
+            arch::remove_page_fault_gate_for_test();
+            arch::trigger_page_fault();
+        }
+        serial_write("ERROR: #DF test returned unexpectedly\n");
+    }
+
+    #[cfg(not(any(feature = "fault-ud", feature = "fault-pf", feature = "fault-df")))]
     serial_write("READY: Embers Rust no_std entry reached.\n");
+    halt_forever()
+}
+
+fn serial_write_hex(value: u64) {
+    serial_write("0x");
+    for shift in (0..16).rev() {
+        let nibble = ((value >> (shift * 4)) & 0xf) as u8;
+        let digit = if nibble < 10 {
+            b'0' + nibble
+        } else {
+            b'a' + nibble - 10
+        };
+        let _ = serial_write_byte(digit);
+    }
+}
+
+/// Called only by the nonreturning, kernel-only assembly exception stubs.
+#[no_mangle]
+pub extern "C" fn embers_report_exception(vector: u64, rip: u64, error: u64) -> ! {
+    match vector {
+        6 => serial_write("FAULT: #UD invalid opcode"),
+        8 => serial_write("FAULT: #DF double fault"),
+        13 => serial_write("FAULT: #GP general protection"),
+        14 => serial_write("FAULT: #PF page fault"),
+        _ => serial_write("FAULT: unexpected vector"),
+    }
+    serial_write(" RIP=");
+    serial_write_hex(rip);
+    serial_write(" CODE=");
+    serial_write_hex(error);
+    if vector == 14 {
+        serial_write(" CR2=");
+        serial_write_hex(arch::page_fault_address());
+    }
+    serial_write("\n");
     halt_forever()
 }
 

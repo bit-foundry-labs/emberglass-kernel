@@ -1,12 +1,13 @@
 # Embers Rust-first x86-64 QEMU kernel. The legacy C prototype is not a build dependency.
 RUST_KERNEL := rust-kernel/target/x86_64-unknown-none/release/embers-rust-kernel
+RUST_FEATURES ?=
 
 .PHONY: all check rust-check rust-iso rust-run clean
 all: rust-check
 check: rust-check
 
 rust-check:
-	cd rust-kernel && cargo build --release --offline
+	cd rust-kernel && cargo build --release --offline $(RUST_FEATURES)
 	python3 scripts/check_rust_elf.py $(RUST_KERNEL)
 
 rust-iso: rust-check
