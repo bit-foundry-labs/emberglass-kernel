@@ -1,82 +1,79 @@
-# EMBERGLASS
-### An original Rust-first operating-system research project
+# Embers Kernel
 
-**Kernel engineering, capability security, and adaptive computing.**
+**An open-source, Rust-first microkernel research project for AI-oriented operating systems.**
 
-Emberglass is an open-source experiment from **Bit Foundry Labs**. We want to understand what an operating system could look like if applications and AI agents could request computing resources intelligently, while the kernel retained final authority over memory, execution time, and hardware access.
+We're investigating what the kernel should control when applications and AI agents compete for CPU time, memory, and eventually accelerator resources. The aim is a small, predictable enforcement layer: capability-based authority, explicit resource budgets, isolation, and measurable performance.
 
-The long-term direction is an **original Rust no_std capability-based microkernel**, not a Linux fork. AI models and agents belong in isolated user-space services; the privileged kernel must never depend on a model to make forward progress.
+**This is a research effort, not a working general-purpose operating system or a benchmark-proven AI-optimized kernel.**
 
-**This is early-stage research, not a usable general-purpose OS.** No production security, hardware-driver, AI-scheduler, or formal-verification claims are made.
+[Contribute](CONTRIBUTING.md) · [Research roadmap](docs/CONTRIBUTOR_ROADMAP.md) · [Open issues](https://github.com/bit-foundry-labs/embers-kernel/issues) · [Contributor launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24)
 
-## What exists today?
+## The engineering idea
 
-| Track | What exists | Where |
+**Keep enforcement deterministic; keep intelligence outside the trusted kernel.**
+
+- **Original microkernel:** target Rust `no_std`, x86-64 and reproducible QEMU experiments. This is not a Linux fork.
+- **Capabilities, not ambient privilege:** explicit authority for memory, processes, IPC, and eventual compute resources; test revocation and stale-handle behavior.
+- **AI-aware without AI in the kernel:** untrusted user-space services may propose scheduling or resource policies, but cannot grant themselves authority.
+- **Bounded resources and fair fallback:** investigate CPU budgets, admission, latency, starvation, and safe recovery before attempting accelerator integration.
+- **Evidence before claims:** compare proposed adaptations against deterministic baselines; measure IPC costs, tail latency, overhead, and failure behavior.
+
+Embers Kernel is **separate from Emberglass OS**, a Linux-based Rust operating-system environment. They explore related questions but do not share a working kernel.
+
+## Where the code actually stands
+
+The default branch currently contains project documentation and contributor guidance, **not an integrated bootable Rust microkernel**. Experimental implementation work is in open, sometimes stacked pull requests:
+
+| Track | Experimental work | Status |
 | --- | --- | --- |
-| Boot reference | An experimental x86-64 **C bootstrap** with serial diagnostics and an allocator; its CI reached READY under BIOS QEMU using an explicit CPU model | [PR #2](https://github.com/bit-foundry-labs/emberglass-kernel/pull/2) |
-| Architecture | Proposed capability-based Rust design, inference permissions, resource budgeting and research bibliography | [PR #3](https://github.com/bit-foundry-labs/emberglass-kernel/pull/3) |
-| Rust research | Host-testable no_std-compatible policy guard and CPU admission *model*, not a running Rust kernel | [PR #6](https://github.com/bit-foundry-labs/emberglass-kernel/pull/6) |
+| x86-64 boot reference | A C bootstrap with QEMU serial diagnostics and allocator tests | [PR #2](https://github.com/bit-foundry-labs/embers-kernel/pull/2), not merged |
+| Architecture | Proposed capability boundaries, resource budgets, and AI policy separation | [PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), not merged |
+| Rust policy research | Host-testable `no_std`-compatible validation and CPU-admission *model* | [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not a running kernel |
+| Rust boot progression | Experimental Limine/QEMU Rust entry and subsequent exception/memory work | [PR #20](https://github.com/bit-foundry-labs/embers-kernel/pull/20) onward, stacked and under review |
 
-**Repository state:** the default branch currently holds only initial project metadata. The work above is under review, not merged into main. Start from the referenced pull requests rather than assuming that main can boot.
+A passing QEMU or host-test check proves only the tested milestone. It does **not** establish hardware isolation, kernel-level capability enforcement, production security, scheduler superiority, or a functioning AI operating system.
 
-## Research questions
+## Try the experimental boot reference
 
-- Can explicit capability boundaries prevent an untrusted AI policy service from acquiring additional CPU, memory or accelerator authority?
-- Can adaptive scheduling hints improve interactive latency without starving low-priority applications?
-- How should model invocations, compute budgets, and memory grants be represented without making a neural-network runtime part of the trusted kernel?
-- What is the measured cost of isolation, IPC, capability checks, and safe fallback?
+**QEMU development environment only. Do not boot this on physical hardware.** On Ubuntu or WSL2 Ubuntu, the C reference is currently available from a review branch:
 
-An interesting experiment that fails to outperform its deterministic baseline is still useful research.
-
-## Try the QEMU bootstrap
-
-**Development VM only. Do not boot this on physical hardware.** These commands target Ubuntu or WSL2 Ubuntu:
-
-~~~bash
-git clone https://github.com/bit-foundry-labs/emberglass-kernel.git
-cd emberglass-kernel
-git fetch origin pull/2/head:kernel-bootstrap-m01
-git switch kernel-bootstrap-m01
+```bash
+git clone https://github.com/bit-foundry-labs/embers-kernel.git
+cd embers-kernel
+git fetch origin pull/2/head:boot-reference
+git switch boot-reference
 
 sudo apt-get update
 sudo apt-get install -y build-essential binutils python3 qemu-system-x86 xorriso curl tar
-
 make check
 make test
 make iso
-# On a host with a working graphical display:
-make run
-~~~
+```
 
-The bootstrap's Makefile uses QEMU with -cpu max to avoid a CPU-feature mismatch observed in earlier emulator testing. For a headless boot, after make iso:
+On a headless host, you can inspect serial output with:
 
-~~~bash
-qemu-system-x86_64 -cpu max -m 256M -cdrom build/emberglass.iso -display none -serial stdio -monitor none -no-reboot
-~~~
+```bash
+qemu-system-x86_64 -cpu max -m 256M -cdrom build/emberglass.iso \
+  -display none -serial stdio -monitor none -no-reboot
+```
 
-Expected serial output ends with READY: original freestanding kernel entered successfully. This is a boot milestone, not a functional desktop.
+The `emberglass.iso` output filename is retained by the older bootstrap branch; the project name is **Embers Kernel**. The reference's expected serial output ends in `READY` when the tested boot path succeeds.
 
-## Try the Rust policy experiment
+For the host-only policy experiment, check out [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6) and run `cargo test` in `experiments/rust-policy-guard`. That does not execute a privileged Rust kernel.
 
-~~~bash
-git fetch origin pull/6/head:rust-policy-guard
-git switch rust-policy-guard
-cd experiments/rust-policy-guard
-cargo test
-~~~
+## Help build it
 
-This library models policy validation only; it is not a scheduler and does not implement a hardware security boundary.
+We're looking for contributors interested in **Rust systems programming, kernel bring-up, x86-64/QEMU, capability security, IPC, concurrency, scheduling, model checking, and reproducible benchmarks**.
 
-## Contribute
+A useful first contribution is a narrow, verifiable improvement, not a sweeping rewrite:
 
-Good contributions include reproducible QEMU tests, CPU exception diagnostics, Rust bare-metal bring-up, protocol reviews, clear documentation and rigorous critiques of our safety claims.
+- [Reproduce the QEMU bootstrap and improve troubleshooting](https://github.com/bit-foundry-labs/embers-kernel/issues/8)
+- [Document the minimum supported x86-64 CPU features](https://github.com/bit-foundry-labs/embers-kernel/issues/9)
+- [Challenge the capability threat model](https://github.com/bit-foundry-labs/embers-kernel/issues/12)
+- [Help prepare a reproducible, contributor-ready Rust boot baseline](https://github.com/bit-foundry-labs/embers-kernel/issues/24)
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md), [the contributor roadmap](docs/CONTRIBUTOR_ROADMAP.md), and [our conduct guidelines](CODE_OF_CONDUCT.md). Check [GitHub issues](https://github.com/bit-foundry-labs/emberglass-kernel/issues) for a small, scoped first task, and discuss architectural changes before implementing large subsystems.
+Read [the contribution guide](CONTRIBUTING.md), [research roadmap](docs/CONTRIBUTOR_ROADMAP.md), [review standard](docs/CODE_REVIEW_STANDARD.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Comment on an issue before undertaking substantial work.
 
-We welcome research that challenges our hypotheses. We prefer a measured counterexample to a grand untested claim.
+## License and stewardship
 
-## Project stewardship and licensing
-
-The project is maintained under Bit Foundry Labs. Original repository content is available under [Apache License 2.0](LICENSE); third-party dependencies carry their own licenses. See [GOVERNANCE.md](docs/GOVERNANCE.md) and [SECURITY.md](SECURITY.md).
-
-Research collaboration and code contributions are welcome; participation does not create employment, funding, or publication guarantees.
+An experimental open-source project stewarded by [Bit Foundry Labs](https://github.com/bit-foundry-labs), licensed under [Apache-2.0](LICENSE). See [governance](docs/GOVERNANCE.md) and [security policy](SECURITY.md). Contributions are welcome; participation does not imply funding, employment, or publication credit.
