@@ -54,7 +54,9 @@ impl FramePool {
 }
 
 fn page_align_up(address: u64) -> Option<u64> {
-    address.checked_add(PAGE_BYTES - 1).map(|value| value & !(PAGE_BYTES - 1))
+    address
+        .checked_add(PAGE_BYTES - 1)
+        .map(|value| value & !(PAGE_BYTES - 1))
 }
 
 /// Check the entire boot memory map, including reserved regions, before any
@@ -72,9 +74,15 @@ pub fn choose_pool(regions: &[Region], min_pages: u64) -> Result<FramePool, MapE
         if region.length == 0 {
             return Err(MapError::ZeroLength);
         }
-        let end = region.base.checked_add(region.length).ok_or(MapError::AddressOverflow)?;
+        let end = region
+            .base
+            .checked_add(region.length)
+            .ok_or(MapError::AddressOverflow)?;
         for earlier in &regions[..index] {
-            let earlier_end = earlier.base.checked_add(earlier.length).ok_or(MapError::AddressOverflow)?;
+            let earlier_end = earlier
+                .base
+                .checked_add(earlier.length)
+                .ok_or(MapError::AddressOverflow)?;
             if region.base < earlier_end && earlier.base < end {
                 return Err(MapError::OverlappingRegions);
             }
@@ -90,7 +98,10 @@ pub fn choose_pool(regions: &[Region], min_pages: u64) -> Result<FramePool, MapE
             continue;
         }
         if choice.as_ref().is_none_or(|best| start < best.next) {
-            choice = Some(FramePool { next: start, end: aligned_end });
+            choice = Some(FramePool {
+                next: start,
+                end: aligned_end,
+            });
         }
     }
     choice.ok_or(MapError::NoUsableSpan)
@@ -107,7 +118,10 @@ mod tests {
     #[test]
     fn empty_map_and_zero_minimum_fail() {
         assert_eq!(choose_pool(&[], 1), Err(MapError::EmptyMap));
-        assert_eq!(choose_pool(&[region(0x100000, PAGE_BYTES, 0)], 0), Err(MapError::InvalidMinimum));
+        assert_eq!(
+            choose_pool(&[region(0x100000, PAGE_BYTES, 0)], 0),
+            Err(MapError::InvalidMinimum)
+        );
     }
 
     #[test]
@@ -140,8 +154,14 @@ mod tests {
 
     #[test]
     fn zero_length_and_address_overflow_fail() {
-        assert_eq!(choose_pool(&[region(0x100000, 0, 0)], 1), Err(MapError::ZeroLength));
-        assert_eq!(choose_pool(&[region(u64::MAX - 5, 10, 2)], 1), Err(MapError::AddressOverflow));
+        assert_eq!(
+            choose_pool(&[region(0x100000, 0, 0)], 1),
+            Err(MapError::ZeroLength)
+        );
+        assert_eq!(
+            choose_pool(&[region(u64::MAX - 5, 10, 2)], 1),
+            Err(MapError::AddressOverflow)
+        );
     }
 
     #[test]
@@ -164,8 +184,14 @@ mod tests {
 
     #[test]
     fn too_short_or_entirely_reserved_fails() {
-        assert_eq!(choose_pool(&[region(0x100000, 15 * PAGE_BYTES, 0)], 16), Err(MapError::NoUsableSpan));
-        assert_eq!(choose_pool(&[region(0x100000, 100 * PAGE_BYTES, 2)], 16), Err(MapError::NoUsableSpan));
+        assert_eq!(
+            choose_pool(&[region(0x100000, 15 * PAGE_BYTES, 0)], 16),
+            Err(MapError::NoUsableSpan)
+        );
+        assert_eq!(
+            choose_pool(&[region(0x100000, 100 * PAGE_BYTES, 2)], 16),
+            Err(MapError::NoUsableSpan)
+        );
     }
 
     #[test]
@@ -181,6 +207,9 @@ mod tests {
 
     #[test]
     fn near_u64_max_does_not_wrap() {
-        assert_eq!(choose_pool(&[region(u64::MAX - 4095, 4095, 0)], 1), Err(MapError::NoUsableSpan));
+        assert_eq!(
+            choose_pool(&[region(u64::MAX - 4095, 4095, 0)], 1),
+            Err(MapError::NoUsableSpan)
+        );
     }
 }

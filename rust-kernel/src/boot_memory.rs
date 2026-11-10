@@ -1,6 +1,8 @@
 //! Bounded translation of Limine's memory map into pure-Rust frame bookkeeping.
 //! This trusts the bootloader's pointers until Embers owns page tables.
-use crate::memory::{choose_pool, FramePool, MapError, Region, MAX_BOOT_REGIONS, REQUIRED_BOOT_PAGES};
+use crate::memory::{
+    choose_pool, FramePool, MapError, Region, MAX_BOOT_REGIONS, REQUIRED_BOOT_PAGES,
+};
 use core::ptr::{addr_of, read_volatile};
 
 #[repr(C)]
