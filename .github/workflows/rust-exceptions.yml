@@ -1,0 +1,89 @@
+name: Embers M03 exception traps in QEMU
+
+on:
+  push:
+    paths:
+      - "rust-kernel/**"
+      - "Makefile"
+      - "linker.ld"
+      - "scripts/make_iso.sh"
+      - ".github/workflows/rust-exceptions.yml"
+  pull_request:
+    paths:
+      - "rust-kernel/**"
+      - "Makefile"
+      - "linker.ld"
+      - "scripts/make_iso.sh"
+      - ".github/workflows/rust-exceptions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exceptions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install headless QEMU and ISO prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 xorriso
+      - name: Rust formatting and lints
+        working-directory: rust-kernel
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --release --offline --all-features -- -D warnings
+      - name: Boot normal kernel and inject intentional CPU faults
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/exception-logs
+          for mode in normal ud pf df; do
+            if [[ "$mode" == "normal" ]]; then
+              make rust-iso
+              expected="READY: Embers Rust no_std entry reached."
+            else
+              make rust-iso RUST_FEATURES="--features fault-$mode"
+              case "$mode" in
+                ud) expected="FAULT: #UD invalid opcode" ;;
+                pf) expected="FAULT: #PF page fault" ;;
+                df) expected="FAULT: #DF double fault" ;;
+              esac
+            fi
+            echo "--- $mode: Boot x86-64 QEMU ---"
+            set +e
+            timeout --signal=TERM --kill-after=2s 10s \
+              qemu-system-x86_64 -cpu max -m 256M \
+                -cdrom build/embers-rust.iso -display none \
+                -serial "file:build/exception-logs/$mode.serial.log" \
+                -d int,guest_errors -D "build/exception-logs/$mode.qemu.log" \
+                -monitor none -no-reboot -no-shutdown
+            status=$?
+            set -e
+            echo "QEMU exit: $status"
+            cat "build/exception-logs/$mode.serial.log" || true
+            if [[ "$status" -ne 124 && "$status" -ne 0 ]]; then
+              echo "QEMU returned unexpected status" >&2
+              exit 1
+            fi
+            grep -Fq "$expected" "build/exception-logs/$mode.serial.log"
+            if grep -Fq "ERROR:" "build/exception-logs/$mode.serial.log"; then
+              echo "Kernel emitted ERROR during $mode" >&2
+              exit 1
+            fi
+            if [[ "$mode" != "normal" ]]; then
+              if grep -Fq "READY: Embers" "build/exception-logs/$mode.serial.log"; then
+                echo "Fault scenario accidentally reached normal READY" >&2
+                exit 1
+              fi
+              grep -Eq 'RIP=0x[[:xdigit:]]{16}' "build/exception-logs/$mode.serial.log"
+            fi
+          done
+      - name: Upload complete fault and exception evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: embers-m03-exception-logs
+          path: build/exception-logs/
+          if-no-files-found: ignore

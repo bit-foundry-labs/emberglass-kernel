@@ -27,9 +27,10 @@ clean:
 
 # Rust boot target is independent of the original C bootstrap.
 RUST_KERNEL := rust-kernel/target/x86_64-unknown-none/release/embers-rust-kernel
+RUST_FEATURES ?=
 .PHONY: rust-check rust-iso rust-run
 rust-check:
-	cd rust-kernel && cargo build --release --offline
+	cd rust-kernel && cargo build --release --offline $(RUST_FEATURES)
 	python3 scripts/check_rust_elf.py $(RUST_KERNEL)
 rust-iso: rust-check
 	KERNEL_ELF="$(RUST_KERNEL)" ISO_KERNEL_NAME="embers.elf" BOOT_CONFIG="rust-kernel/limine.conf" ISO_OUT="build/embers-rust.iso" bash scripts/make_iso.sh
