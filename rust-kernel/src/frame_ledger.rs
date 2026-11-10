@@ -25,6 +25,7 @@ impl OwnerId {
 /// Its private fields alone do not provide a security boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FrameToken {
+    ledger_id: u64,
     slot: usize,
     generation: u64,
     owner: OwnerId,
@@ -69,12 +70,15 @@ pub enum LedgerError {
 /// no physical frame reads or writes. Neither FramePool nor FrameToken can
 /// establish kernel/user memory isolation.
 pub struct FrameLedger<const N: usize> {
+    // The first claimed frame identifies the ledger within one unique FramePool.
+    ledger_id: u64,
     slots: [Slot; N],
 }
 
 impl<const N: usize> FrameLedger<N> {
     /// Claim N frames from the monotonically advancing pool. Check capacity
     /// and remaining frames first, avoiding partial consumption on failures.
+    /// Identity is distinct only when the source pool never reissues frames.
     pub fn from_pool(pool: &mut FramePool) -> Result<Self, LedgerError> {
         if N == 0 || N > MAX_LEDGER_FRAMES {
             return Err(LedgerError::InvalidCapacity);
@@ -88,7 +92,10 @@ impl<const N: usize> FrameLedger<N> {
             // Remaining capacity was checked above; pool is single-writer.
             slot.physical = pool.claim().ok_or(LedgerError::InsufficientFrames)?;
         }
-        Ok(Self { slots })
+        // N is nonzero, and all frames originate from one monotonic pool.
+        // This identity is NOT globally unique across overlapping FramePools.
+        let ledger_id = slots[0].physical;
+        Ok(Self { ledger_id, slots })
     }
 
     /// Assign the lowest available slot deterministically to an owner.
@@ -102,6 +109,7 @@ impl<const N: usize> FrameLedger<N> {
                 slot.generation = generation;
                 slot.state = SlotState::Owned(owner);
                 return Ok(FrameToken {
+                    ledger_id: self.ledger_id,
                     slot: index,
                     generation,
                     owner,
@@ -141,7 +149,11 @@ impl<const N: usize> FrameLedger<N> {
     }
 
     fn require_owned(&self, token: FrameToken, caller: OwnerId) -> Result<&Slot, LedgerError> {
-        // Check claimed identity even if a token references a valid slot.
+        // A slot, generation, and owner can coincide in separate ledgers.
+        // A token from another ledger must never authorize this ledger.
+        if token.ledger_id != self.ledger_id {
+            return Err(LedgerError::InvalidToken);
+        }
         if caller != token.owner {
             return Err(LedgerError::WrongOwner);
         }
@@ -302,6 +314,49 @@ mod tests {
         assert_eq!(first.physical_address(a, owner(1)), Ok(0x100000));
         assert_eq!(second.physical_address(b, owner(1)), Ok(0x102000));
         assert_eq!(frames.remaining(), 0);
+    }
+
+    #[test]
+    fn token_cannot_cross_ledgers_even_if_slot_generation_and_owner_match() {
+        let mut frames = pool(4);
+        let mut first = FrameLedger::<2>::from_pool(&mut frames).unwrap();
+        let mut second = FrameLedger::<2>::from_pool(&mut frames).unwrap();
+        let token_a = first.acquire(owner(1)).unwrap();
+        let token_b = second.acquire(owner(1)).unwrap();
+
+        assert_eq!(token_a.slot, token_b.slot);
+        assert_eq!(token_a.generation, token_b.generation);
+        assert_eq!(token_a.owner, token_b.owner);
+        assert_ne!(token_a.ledger_id, token_b.ledger_id);
+
+        assert_eq!(
+            second.physical_address(token_a, owner(1)),
+            Err(LedgerError::InvalidToken)
+        );
+        assert_eq!(
+            first.quarantine(token_b, owner(1)),
+            Err(LedgerError::InvalidToken)
+        );
+        assert_eq!(first.quarantined_count(), 0);
+        assert_eq!(second.quarantined_count(), 0);
+        assert_eq!(first.physical_address(token_a, owner(1)), Ok(0x100000));
+        assert_eq!(second.physical_address(token_b, owner(1)), Ok(0x102000));
+    }
+
+    #[test]
+    fn invalid_ledger_identity_does_not_mutate_owned_frame() {
+        let mut frames = pool(2);
+        let mut ledger = FrameLedger::<2>::from_pool(&mut frames).unwrap();
+        let valid = ledger.acquire(owner(7)).unwrap();
+        let forged = FrameToken {
+            ledger_id: valid.ledger_id + PAGE_BYTES,
+            ..valid
+        };
+        assert_eq!(
+            ledger.quarantine(forged, owner(7)),
+            Err(LedgerError::InvalidToken)
+        );
+        assert_eq!(ledger.physical_address(valid, owner(7)), Ok(0x100000));
     }
 
     #[test]
