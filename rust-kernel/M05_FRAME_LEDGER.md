@@ -20,10 +20,16 @@ Quarantined. The transitions are strictly one-way.
 - The ledger accepts 1..=32 frames from M04's monotonic FramePool.
   It checks the source capacity before consuming any physical addresses.
 - Each claim chooses the first available slot deterministically.
-- FrameToken carries a private slot index, generation and owner. These
-  **are only accounting identifiers, not unforgeable capabilities**.
-- Every address lookup and quarantine transition checks the owner's
-  identity, slot bounds, generation and current state.
+- FrameToken carries a private ledger identity, slot index, generation, and
+  owner. The identity is derived from the first physical frame assigned by
+  the one monotonic FramePool. Cross-ledger tokens from that pool are rejected.
+  **These are accounting identifiers, not unforgeable capabilities**.
+- Multiple independently constructed FramePools that cover overlapping
+  physical ranges can generate the same ledger identity. A future authoritative
+  physical-memory allocator must prevent overlapping ownership; this model
+  does not establish global uniqueness by itself.
+- Every address lookup and quarantine transition checks the ledger identity,
+  owner, slot bounds, generation and current state.
 - Exhaustion, invalid IDs, forged tokens, cross-owner requests, repeat
   quarantine and generation overflow return typed errors without
   silently allocating or recycling a page.
