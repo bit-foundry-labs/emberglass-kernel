@@ -9,6 +9,8 @@ ISO_OUT="${ISO_OUT:-build/emberglass.iso}"
 for tool in curl tar make xorriso sha256sum; do
   command -v "$tool" >/dev/null || { echo "Missing dependency: $tool" >&2; exit 1; }
 done
+# Standalone Rust ISO builds do not compile the C kernel first.
+mkdir -p build
 if [ ! -d limine-binary ]; then
   curl -fL --retry 2 -o build/limine-binary.tar.gz "https://github.com/Limine-Bootloader/Limine/releases/download/${LIMINE_TAG}/limine-binary.tar.gz"
   printf "%s  %s\n" "b38aabb042b0c0f9f562b7741be3c1204838d7bbacfa78bb411c674bd5b984ee" "build/limine-binary.tar.gz" | sha256sum --check
