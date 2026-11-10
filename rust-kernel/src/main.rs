@@ -225,9 +225,7 @@ fn check_boot_memory() {
             halt_forever()
         }
     };
-    if ledger.physical_address(first, service_owner)
-        != Err(frame_ledger::LedgerError::WrongOwner)
-    {
+    if ledger.physical_address(first, service_owner) != Err(frame_ledger::LedgerError::WrongOwner) {
         serial_write("ERROR: cross-owner frame access was accepted\n");
         halt_forever();
     }

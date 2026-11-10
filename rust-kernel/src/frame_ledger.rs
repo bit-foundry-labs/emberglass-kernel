@@ -113,22 +113,14 @@ impl<const N: usize> FrameLedger<N> {
 
     /// Read the physical *number* only if the caller matches the active owner.
     /// This does not map or dereference physical memory.
-    pub fn physical_address(
-        &self,
-        token: FrameToken,
-        caller: OwnerId,
-    ) -> Result<u64, LedgerError> {
+    pub fn physical_address(&self, token: FrameToken, caller: OwnerId) -> Result<u64, LedgerError> {
         let slot = self.require_owned(token, caller)?;
         Ok(slot.physical)
     }
 
     /// Logically withdraw the owner's frame from future claims. A quarantined
     /// frame stays unavailable forever in M05, even if no CPU work remains.
-    pub fn quarantine(
-        &mut self,
-        token: FrameToken,
-        caller: OwnerId,
-    ) -> Result<(), LedgerError> {
+    pub fn quarantine(&mut self, token: FrameToken, caller: OwnerId) -> Result<(), LedgerError> {
         self.require_owned(token, caller)?;
         self.slots[token.slot].state = SlotState::Quarantined;
         Ok(())
@@ -148,16 +140,15 @@ impl<const N: usize> FrameLedger<N> {
             .count()
     }
 
-    fn require_owned(
-        &self,
-        token: FrameToken,
-        caller: OwnerId,
-    ) -> Result<&Slot, LedgerError> {
+    fn require_owned(&self, token: FrameToken, caller: OwnerId) -> Result<&Slot, LedgerError> {
         // Check claimed identity even if a token references a valid slot.
         if caller != token.owner {
             return Err(LedgerError::WrongOwner);
         }
-        let slot = self.slots.get(token.slot).ok_or(LedgerError::InvalidToken)?;
+        let slot = self
+            .slots
+            .get(token.slot)
+            .ok_or(LedgerError::InvalidToken)?;
         if slot.generation != token.generation {
             return Err(LedgerError::InvalidToken);
         }
@@ -276,10 +267,7 @@ mod tests {
         let mut ledger = FrameLedger::<2>::from_pool(&mut frames).unwrap();
         let valid = ledger.acquire(owner(1)).unwrap();
         assert_eq!(
-            ledger.physical_address(
-                FrameToken { slot: 4, ..valid },
-                owner(1),
-            ),
+            ledger.physical_address(FrameToken { slot: 4, ..valid }, owner(1)),
             Err(LedgerError::InvalidToken)
         );
         assert_eq!(
