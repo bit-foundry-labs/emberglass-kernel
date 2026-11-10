@@ -53,3 +53,12 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Freestanding Rust build and QEMU assets
+build/
+.cache/
+*.iso
+limine-binary/
+target/
+*.rs.bk
+.idea/

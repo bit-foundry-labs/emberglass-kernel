@@ -9,7 +9,7 @@ The best first contribution is small enough to explain, test, and review.
 3. Prefer one observable behavior per pull request. For security-critical APIs, start with tests and a written threat assumption.
 4. Do not claim mathematical guarantees without a precisely scoped proof, benchmark, or test.
 
-The default branch currently contains project documentation, not an integrated bootable Rust microkernel. **PR #2** holds the QEMU/C reference bootstrap, **PR #3** proposes architecture, **PR #6** contains a host-tested Rust policy simulation, and **PR #20** begins a stacked Rust boot series. Do not assume that these are merged or independently runnable from `main`.
+The default branch includes an experimental Rust `no_std` x86-64 Limine/QEMU boot entry. Reproduce it with `make rust-iso` and the headless QEMU command in [README](README.md). **PR #2** holds the optional historical C reference, **PR #3** proposes architecture, **PR #6** contains a host-tested Rust policy simulation, and **PRs #21–#23** build on the Rust boot in draft form. Do not assume those follow-on PRs are already merged.
 
 ## Choose a contribution path
 
