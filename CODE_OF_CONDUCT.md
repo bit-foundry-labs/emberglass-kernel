@@ -1,4 +1,4 @@
-# Emberglass Community Conduct
+# Embers Kernel · Community Code of Conduct
 
 We want a technical community where careful disagreement improves the software.
 
