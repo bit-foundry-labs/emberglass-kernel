@@ -5,6 +5,7 @@
 
 mod arch;
 mod boot_memory;
+#[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
 mod memory;
 mod serial;
@@ -205,8 +206,15 @@ fn check_boot_memory() {
     serial_write_hex(pool.remaining());
     serial_write("\n");
 
-    // BSP-only demonstration: this ledger does not control CPU/IOMMU mappings.
-    let mut ledger = match frame_ledger::FrameLedger::<8>::from_pool(&mut pool) {
+    // The normal boot checks frame accounting without running test scenarios.
+    #[cfg(feature = "boot-ownership-smoke")]
+    run_ownership_smoke(&mut pool);
+}
+
+#[cfg(feature = "boot-ownership-smoke")]
+fn run_ownership_smoke(pool: &mut memory::FramePool) {
+    // This BSP-only test does not control CPU or IOMMU memory mappings.
+    let mut ledger = match frame_ledger::FrameLedger::<8>::from_pool(pool) {
         Ok(ledger) => ledger,
         Err(_) => {
             serial_write("ERROR: frame ownership ledger initialization failed\n");

@@ -27,12 +27,13 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --release --offline -- -D warnings
+          cargo clippy --release --offline --features boot-ownership-smoke -- -D warnings
       - name: Test M04 map and M05 ownership invariants on host
         run: |
           make rust-memory-test
           make rust-ledger-test
       - name: Build freestanding Rust ELF and Limine ISO
-        run: make rust-iso
+        run: make rust-iso RUST_FEATURES="--features boot-ownership-smoke"
       - name: Boot and check M04 frame claims plus M05 owner quarantine
         shell: bash
         run: |
