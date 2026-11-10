@@ -4,14 +4,16 @@ This is a research sequence, not a release schedule. Work is tracked in issues a
 
 ## Foundation: reproducible execution
 
-**Integration gate:** [Issue #24](https://github.com/bit-foundry-labs/embers-kernel/issues/24) tracks a trustworthy Rust/QEMU baseline, starting with the minimal Rust `no_std` M02 entry and continuing toward tested exception and frame-accounting milestones.
-- Reproduce the original C kernel's x86-64 BIOS/QEMU boot and retain serial evidence ([PR #2](https://github.com/bit-foundry-labs/embers-kernel/pull/2)).
-- Record minimum supported CPU features (the existing QEMU run uses -cpu max) and add UEFI coverage.
-- Install and test GDT, IDT, TSS, exception reporting, and deliberate CPU faults.
-- Reproduce the minimal Rust `no_std` boot on `main`; confirm Limine handoff, serial `READY`, pinned toolchain and documented unsafe assumptions. The original [PR #20](https://github.com/bit-foundry-labs/embers-kernel/pull/20) introduced this experimental code.
+**Implemented and CI-tested on `main`:**
+- [M02](https://github.com/bit-foundry-labs/embers-kernel/pull/26): Rust `no_std` Limine/QEMU boot, pinned compiler, UART READY.
+- [M03](https://github.com/bit-foundry-labs/embers-kernel/pull/27): GDT/TSS/IDT, double-fault IST, deliberate exception tests.
+- [M04](https://github.com/bit-foundry-labs/embers-kernel/pull/28): Limine map validation and monotonic physical-frame claims.
+- [M05](https://github.com/bit-foundry-labs/embers-kernel/pull/29): bounded, single-writer owner ledger; quarantine cannot be recycled.
+
+**Still needed:** fresh Ubuntu/WSL reproduction by an independent contributor; tested minimum CPU feature requirements beyond `-cpu max`; separate UEFI boot coverage; full fault-state and memory-mapping safety review. See [launch-readiness issue #24](https://github.com/bit-foundry-labs/embers-kernel/issues/24). The historical C reference lives in PR #2, not the Rust build.
 
 ## Isolation: the real microkernel
-- Physical memory ownership, page tables and user/kernel page permissions.
+- Persistent physical frame ownership, kernel-owned page tables, supervisor/user permission boundaries, and safe zeroing/reclamation. The M05 accounting demo does not enforce these.
 - First separate user-mode task and validated syscall/IPC boundary.
 - Capability handle table; revocation, attenuation, stale-handle rejection.
 - Deterministic scheduling, CPU time budgets and documented admission assumptions.
