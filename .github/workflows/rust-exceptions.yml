@@ -7,6 +7,7 @@ on:
       - "Makefile"
       - "linker.ld"
       - "scripts/make_iso.sh"
+      - "scripts/check_rust_elf.py"
       - ".github/workflows/rust-exceptions.yml"
   pull_request:
     paths:
