@@ -23,11 +23,7 @@ static REQUESTS_START: [u64; 4] = [
 
 #[used]
 #[link_section = ".limine_requests"]
-static mut BASE_REVISION: [u64; 3] = [
-    0xf9562b2d5c95a6c8,
-    0x6a7b384944536bdc,
-    6,
-];
+static mut BASE_REVISION: [u64; 3] = [0xf9562b2d5c95a6c8, 0x6a7b384944536bdc, 6];
 
 #[used]
 #[link_section = ".limine_requests_end"]
