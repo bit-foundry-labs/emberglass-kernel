@@ -6,11 +6,8 @@ on:
       - "rust-kernel/**"
       - "Makefile"
       - ".github/workflows/rust-memory.yml"
+  # Required checks must run even for documentation-only pull requests.
   pull_request:
-    paths:
-      - "rust-kernel/**"
-      - "Makefile"
-      - ".github/workflows/rust-memory.yml"
 
 permissions:
   contents: read

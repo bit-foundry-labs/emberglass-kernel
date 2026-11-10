@@ -9,14 +9,8 @@ on:
       - "scripts/check_rust_elf.py"
       - "Makefile"
       - ".github/workflows/rust-boot.yml"
+  # Required checks must run even for documentation-only pull requests.
   pull_request:
-    paths:
-      - "rust-kernel/**"
-      - "linker.ld"
-      - "scripts/make_iso.sh"
-      - "scripts/check_rust_elf.py"
-      - "Makefile"
-      - ".github/workflows/rust-boot.yml"
 
 permissions:
   contents: read
