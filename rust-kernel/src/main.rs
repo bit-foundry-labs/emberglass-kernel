@@ -117,7 +117,6 @@ pub extern "C" fn kernel_entry() -> ! {
         // SAFETY: Deliberate exception in isolated QEMU testing only.
         unsafe { asm!("ud2", options(nomem, nostack)) };
         serial_write("ERROR: #UD test returned unexpectedly\n");
-        halt_forever();
     }
 
     #[cfg(feature = "fault-pf")]
@@ -126,7 +125,6 @@ pub extern "C" fn kernel_entry() -> ! {
         // SAFETY: Deliberate exception in isolated QEMU testing only.
         unsafe { arch::trigger_page_fault() };
         serial_write("ERROR: #PF test returned unexpectedly\n");
-        halt_forever();
     }
 
     #[cfg(feature = "fault-df")]
@@ -138,9 +136,9 @@ pub extern "C" fn kernel_entry() -> ! {
             arch::trigger_page_fault();
         }
         serial_write("ERROR: #DF test returned unexpectedly\n");
-        halt_forever();
     }
 
+    #[cfg(not(any(feature = "fault-ud", feature = "fault-pf", feature = "fault-df")))]
     serial_write("READY: Embers Rust no_std entry reached.\n");
     halt_forever()
 }
