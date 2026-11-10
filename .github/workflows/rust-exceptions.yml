@@ -33,7 +33,10 @@ jobs:
         working-directory: rust-kernel
         run: |
           cargo fmt --all -- --check
-          cargo clippy --release --offline --all-features -- -D warnings
+          cargo clippy --release --offline -- -D warnings
+          for mode in ud pf df; do
+            cargo clippy --release --offline --features "fault-$mode" -- -D warnings
+          done
       - name: Boot normal kernel and inject intentional CPU faults
         shell: bash
         run: |

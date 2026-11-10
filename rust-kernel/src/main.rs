@@ -145,12 +145,15 @@ pub extern "C" fn kernel_entry() -> ! {
     halt_forever()
 }
 
-
 fn serial_write_hex(value: u64) {
     serial_write("0x");
     for shift in (0..16).rev() {
         let nibble = ((value >> (shift * 4)) & 0xf) as u8;
-        let digit = if nibble < 10 { b'0' + nibble } else { b'a' + nibble - 10 };
+        let digit = if nibble < 10 {
+            b'0' + nibble
+        } else {
+            b'a' + nibble - 10
+        };
         let _ = serial_write_byte(digit);
     }
 }

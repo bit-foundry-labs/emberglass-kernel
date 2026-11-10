@@ -58,8 +58,13 @@ struct IdtGate {
 
 impl IdtGate {
     const EMPTY: Self = Self {
-        offset_low: 0, selector: 0, ist: 0, attributes: 0,
-        offset_middle: 0, offset_high: 0, reserved: 0,
+        offset_low: 0,
+        selector: 0,
+        ist: 0,
+        attributes: 0,
+        offset_middle: 0,
+        offset_high: 0,
+        reserved: 0,
     };
 
     fn interrupt(handler: usize, ist: u8) -> Self {
