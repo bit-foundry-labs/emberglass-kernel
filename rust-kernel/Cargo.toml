@@ -15,6 +15,7 @@ default = []
 fault-ud = []
 fault-pf = []
 fault-df = []
+boot-ownership-smoke = []
 
 [dependencies]
 

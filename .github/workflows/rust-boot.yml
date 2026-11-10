@@ -64,6 +64,10 @@ jobs:
             exit 1
           fi
           grep -Fq "READY: Embers Rust no_std entry reached." build/embers-rust-serial.log
+          if grep -Fq "OWNERSHIP:" build/embers-rust-serial.log; then
+            echo "Normal boot unexpectedly ran the optional ownership smoke test" >&2
+            exit 1
+          fi
       - name: Preserve serial and exception logs
         if: always()
         uses: actions/upload-artifact@v4

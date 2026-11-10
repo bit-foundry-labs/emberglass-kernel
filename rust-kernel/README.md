@@ -59,6 +59,15 @@ Run host tests from repository root:
     make rust-memory-test
     make rust-ledger-test
 
+The normal kernel boot no longer executes the ownership test scenario. To run
+the M05 QEMU smoke test explicitly, build and boot with:
+
+    make rust-iso RUST_FEATURES="--features boot-ownership-smoke"
+    make rust-run RUST_FEATURES="--features boot-ownership-smoke"
+
+The M04/M05 memory CI runs this feature and checks cross-owner rejection and
+permanent quarantine. This evidence is limited to the emulator demonstration.
+
 The next major isolation milestone requires persistent frame ownership and
 kernel-controlled page tables; then a validated ring-3 boundary and IPC.
 These do not exist in the current kernel.

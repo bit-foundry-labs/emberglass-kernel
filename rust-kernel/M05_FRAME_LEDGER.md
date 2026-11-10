@@ -39,7 +39,7 @@ Quarantined. The transitions are strictly one-way.
 M05 takes the deliberately conservative route of **permanent quarantine**:
 no CPU mapping audit, device fences, DMA draining, TLB shootdown or IOMMU
 quiescence proof is available. It would be unsound to expose a public
-\`release\` or \`reclaim\` method at this stage.
+`release` or `reclaim` method at this stage.
 
 ## What is tested
 
@@ -47,14 +47,17 @@ Run on Ubuntu/WSL with the pinned Rust toolchain:
 
     make rust-memory-test
     make rust-ledger-test
-    make rust-iso
-    make rust-run
+    make rust-iso RUST_FEATURES="--features boot-ownership-smoke"
+    make rust-run RUST_FEATURES="--features boot-ownership-smoke"
 
 Host tests run the pure-Rust modules in a normal userspace test harness;
-the privileged kernel module itself remains \`no_std\` and allocation-free.
+the privileged kernel module itself remains `no_std` and allocation-free.
 Existing M04 negative-path tests run alongside M05 tests.
 
-The BSP QEMU boot demo creates an eight-slot ledger and exercises:
+The optional `boot-ownership-smoke` feature is the only path that runs the
+BSP ledger demonstration. Normal boots retain memory-map validation without
+executing ownership test scenarios. Under this feature, the QEMU demo creates
+an eight-slot ledger and exercises:
 - Two distinct owners with distinct physical frame addresses.
 - Rejection of an unauthorized cross-owner address lookup.
 - Permanent quarantine of a logically invalidated frame.
