@@ -30,11 +30,13 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --release --offline -- -D warnings
-      - name: Test pure frame-ledger invariants on host
-        run: make rust-memory-test
+      - name: Test M04 map and M05 ownership invariants on host
+        run: |
+          make rust-memory-test
+          make rust-ledger-test
       - name: Build freestanding Rust ELF and Limine ISO
         run: make rust-iso
-      - name: Boot and check two aligned unique ledger claims
+      - name: Boot and check M04 frame claims plus M05 owner quarantine
         shell: bash
         run: |
           set +e
@@ -66,6 +68,15 @@ jobs:
           assert first >= 0x100000 and first % 4096 == 0
           assert second == first + 4096, "claims must be unique and consecutive"
           print("PASS: two unique, page-aligned, consecutive physical ledger claims")
+          assert "OWNERSHIP: cross-owner access rejected" in serial
+          assert "OWNERSHIP: quarantined frame blocked from reuse" in serial
+          match = re.search(r"OWNERSHIP: owner 2 frame = 0x([0-9a-f]{16})", serial)
+          assert match, "missing M05 assigned frame address"
+          owner2_frame = int(match.group(1), 16)
+          assert owner2_frame == second + 2 * 4096, (
+              "owner 2 must receive a distinct aligned frame from M05 ledger"
+          )
+          print("PASS: M05 unique ownership, cross-owner denial and permanent quarantine")
           PY
       - name: Preserve boot and exception evidence
         if: always()
