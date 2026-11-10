@@ -29,6 +29,17 @@ If changing APIs, provide the invariant being enforced, the trust boundary, fail
 
 Do not change unrelated code, disable failing tests, commit model credentials, include proprietary model weights, or add network/API spending as an undocumented dependency.
 
+## Merge readiness
+
+Before a change to `main` is merged, check the `whitespace`,
+`rust-boot`, `exceptions`, and `memory` GitHub Actions jobs.
+All four run on every pull request, including documentation-only changes.
+A passing emulator check does not imply hardware isolation or formal proof.
+
+The [main branch protection guide](docs/BRANCH_PROTECTION.md) documents
+the repository administrator's required rule settings and review policy.
+CI passing and an active protection ruleset are separate verification steps.
+
 ## Review checklist
 
 - [ ] I linked the relevant issue or ADR.
