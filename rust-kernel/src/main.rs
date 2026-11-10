@@ -7,6 +7,7 @@ mod arch;
 mod boot_memory;
 mod frame_ledger;
 mod memory;
+mod serial;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
@@ -82,11 +83,18 @@ fn serial_write_byte(byte: u8) -> bool {
     false
 }
 
+/// Emit an entire diagnostic or stop execution if the UART cannot accept
+/// a byte. Do not attempt a recursive serial error report from this path.
 fn serial_write(message: &str) {
-    for byte in message.bytes() {
-        if !serial_write_byte(byte) {
-            return;
+    let result = serial::write_message(message, |byte| {
+        if serial_write_byte(byte) {
+            Ok(())
+        } else {
+            Err(serial::SerialError::TransmitTimeout)
         }
+    });
+    if result.is_err() {
+        halt_forever();
     }
 }
 
@@ -261,7 +269,9 @@ fn serial_write_hex(value: u64) {
         } else {
             b'a' + nibble - 10
         };
-        let _ = serial_write_byte(digit);
+        if !serial_write_byte(digit) {
+            halt_forever();
+        }
     }
 }
 

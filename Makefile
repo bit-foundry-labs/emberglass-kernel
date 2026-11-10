@@ -33,3 +33,10 @@ rust-ledger-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test tests/frame_ledger_host.rs -o ../build/embers-frame-ledger-tests
 	./build/embers-frame-ledger-tests
+
+# Host-only tests of bounded serial diagnostic error propagation.
+.PHONY: rust-serial-test
+rust-serial-test:
+	mkdir -p build
+	rustc --edition=2021 --test rust-kernel/src/serial.rs -o build/embers-serial-host-tests
+	./build/embers-serial-host-tests
