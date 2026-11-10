@@ -4,11 +4,11 @@ This is a research sequence, not a release schedule. Work is tracked in issues a
 
 ## Foundation: reproducible execution
 
-**Integration gate:** [Issue #24](https://github.com/bit-foundry-labs/embers-kernel/issues/24) tracks a trustworthy bootable Rust/QEMU baseline on `main`, a prerequisite for inviting contributors to follow a simple first-run path.
+**Integration gate:** [Issue #24](https://github.com/bit-foundry-labs/embers-kernel/issues/24) tracks a trustworthy Rust/QEMU baseline, starting with the minimal Rust `no_std` M02 entry and continuing toward tested exception and frame-accounting milestones.
 - Reproduce the original C kernel's x86-64 BIOS/QEMU boot and retain serial evidence ([PR #2](https://github.com/bit-foundry-labs/embers-kernel/pull/2)).
 - Record minimum supported CPU features (the existing QEMU run uses -cpu max) and add UEFI coverage.
 - Install and test GDT, IDT, TSS, exception reporting, and deliberate CPU faults.
-- Introduce the smallest independent Rust `no_std` boot, with measurements and clear assembly/unsafe boundaries; see the [stacked Rust boot PR #20](https://github.com/bit-foundry-labs/embers-kernel/pull/20), not yet on `main`.
+- Reproduce the minimal Rust `no_std` boot on `main`; confirm Limine handoff, serial `READY`, pinned toolchain and documented unsafe assumptions. The original [PR #20](https://github.com/bit-foundry-labs/embers-kernel/pull/20) introduced this experimental code.
 
 ## Isolation: the real microkernel
 - Physical memory ownership, page tables and user/kernel page permissions.

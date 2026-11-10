@@ -22,42 +22,38 @@ Embers Kernel is **separate from Emberglass OS**, a Linux-based Rust operating-s
 
 ## Where the code actually stands
 
-The default branch currently contains project documentation and contributor guidance, **not an integrated bootable Rust microkernel**. Experimental implementation work is in open, sometimes stacked pull requests:
+This integration introduces the first **bootable Rust `no_std` x86-64 kernel entry** on the default branch. It prints a diagnostic `READY` marker in QEMU, but **does not yet implement user-mode execution, protected page tables, capabilities, IPC, or scheduling**. More advanced boot experiments remain in stacked, draft PRs:
 
 | Track | Experimental work | Status |
 | --- | --- | --- |
-| x86-64 boot reference | A C bootstrap with QEMU serial diagnostics and allocator tests | [PR #2](https://github.com/bit-foundry-labs/embers-kernel/pull/2), not merged |
+| Rust `no_std` boot | Limine handoff, minimal UART diagnostics, freestanding x86-64 ELF | M02: reproducible on `main` after this PR merges |
 | Architecture | Proposed capability boundaries, resource budgets, and AI policy separation | [PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), not merged |
 | Rust policy research | Host-testable `no_std`-compatible validation and CPU-admission *model* | [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not a running kernel |
-| Rust boot progression | Experimental Limine/QEMU Rust entry and subsequent exception/memory work | [PR #20](https://github.com/bit-foundry-labs/embers-kernel/pull/20) onward, stacked and under review |
+| Rust boot progression | Exception traps and physical frame accounting experiments | [PRs #21–#23](https://github.com/bit-foundry-labs/embers-kernel/pulls), stacked and under review |
 
 A passing QEMU or host-test check proves only the tested milestone. It does **not** establish hardware isolation, kernel-level capability enforcement, production security, scheduler superiority, or a functioning AI operating system.
 
-## Try the experimental boot reference
+## Boot Embers in headless QEMU
 
-**QEMU development environment only. Do not boot this on physical hardware.** On Ubuntu or WSL2 Ubuntu, the C reference is currently available from a review branch:
+**Development emulator only. Do not boot on physical hardware.** On Ubuntu or WSL2 Ubuntu, install Rust via [rustup](https://rustup.rs) and then:
 
 ```bash
 git clone https://github.com/bit-foundry-labs/embers-kernel.git
 cd embers-kernel
-git fetch origin pull/2/head:boot-reference
-git switch boot-reference
-
 sudo apt-get update
-sudo apt-get install -y build-essential binutils python3 qemu-system-x86 xorriso curl tar
-make check
-make test
-make iso
-```
-
-On a headless host, you can inspect serial output with:
-
-```bash
-qemu-system-x86_64 -cpu max -m 256M -cdrom build/emberglass.iso \
+sudo apt-get install -y make binutils python3 qemu-system-x86 xorriso curl tar
+cd rust-kernel
+rustup toolchain install 1.90.0 --component clippy,rustfmt --target x86_64-unknown-none
+cd ..
+make rust-check
+make rust-iso
+qemu-system-x86_64 -cpu max -m 256M -cdrom build/embers-rust.iso \
   -display none -serial stdio -monitor none -no-reboot
 ```
 
-The `emberglass.iso` output filename is retained by the older bootstrap branch; the project name is **Embers Kernel**. The reference's expected serial output ends in `READY` when the tested boot path succeeds.
+The serial log should contain `READY: Embers Rust no_std entry reached.`. The intentionally halted kernel keeps QEMU running; stop the emulator with Ctrl+C. `-cpu max` is only the verified emulator profile, not a minimum hardware requirement. Both CI evidence and unsafe assumptions are described in [the Rust boot notes](rust-kernel/README.md).
+
+The earlier C prototype remains accessible as the separate [PR #2 research reference](https://github.com/bit-foundry-labs/embers-kernel/pull/2). It is **not** required to build or execute the Rust kernel.
 
 For the host-only policy experiment, check out [PR #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6) and run `cargo test` in `experiments/rust-policy-guard`. That does not execute a privileged Rust kernel.
 
