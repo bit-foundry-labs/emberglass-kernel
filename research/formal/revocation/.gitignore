@@ -1,0 +1,4 @@
+.tools/
+.check-logs/
+states/
+*.tla~

@@ -1,0 +1,41 @@
+name: TLA+ capability revocation model checks
+
+on:
+  push:
+    paths:
+      - "research/formal/revocation/**"
+      - ".github/workflows/tla-revocation.yml"
+  pull_request:
+    paths:
+      - "research/formal/revocation/**"
+      - ".github/workflows/tla-revocation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  revocation-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python companion state explorer
+        run: python3 research/formal/revocation/check_reference.py
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check actual TLA+ models with pinned TLC
+        working-directory: research/formal/revocation
+        run: TLA_DOWNLOAD=1 bash check_tlc.sh
+
+      - name: Save TLC model-checking evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emberglass-revocation-tlc-logs
+          path: research/formal/revocation/.check-logs/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 14
