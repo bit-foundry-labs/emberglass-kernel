@@ -90,6 +90,9 @@ impl FramePool {
         Ok(run)
     }
 
+    // Used by M05's optional ownership smoke and the host regression tests.
+    // Normal M06a boot diagnostics use reserve_contiguous directly.
+    #[cfg(any(test, feature = "boot-ownership-smoke"))]
     pub fn claim(&mut self) -> Option<u64> {
         self.reserve_contiguous(1).ok()?.address_at(0)
     }
