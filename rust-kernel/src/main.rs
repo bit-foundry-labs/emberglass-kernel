@@ -198,12 +198,18 @@ fn check_boot_memory() {
         }
     };
 
-    let Some(first) = pool.claim() else {
-        serial_write("ERROR: first frame ledger claim failed\n");
-        halt_forever()
+    // Reserve both diagnostic frames in one bounded operation. This is only
+    // physical-address bookkeeping; neither page is mapped or zeroed here.
+    let initial_frames = match pool.reserve_contiguous(2) {
+        Ok(run) => run,
+        Err(_) => {
+            serial_write("ERROR: initial frame reservation failed\n");
+            halt_forever()
+        }
     };
-    let Some(second) = pool.claim() else {
-        serial_write("ERROR: second frame ledger claim failed\n");
+    let (Some(first), Some(second)) = (initial_frames.address_at(0), initial_frames.address_at(1))
+    else {
+        serial_write("ERROR: initial reservation invariant failed\n");
         halt_forever()
     };
     serial_write("MEMORY: validated Limine map for physical frame accounting\n");
