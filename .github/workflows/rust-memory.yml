@@ -14,14 +14,10 @@ permissions:
 
 jobs:
   memory:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install QEMU and ISO prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 xorriso
       - name: Format and lint Rust kernel
         working-directory: rust-kernel
         run: |
@@ -32,6 +28,15 @@ jobs:
         run: |
           make rust-memory-test
           make rust-ledger-test
+      - name: Install QEMU and ISO prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Avoid a ten-minute hang when Ubuntu package mirrors are unreachable.
+          timeout 60s sudo apt-get update -o Acquire::Retries=0 -o Acquire::http::Timeout=12 -o Acquire::https::Timeout=12
+          timeout 90s sudo apt-get install -y -o Acquire::Retries=0 -o Acquire::http::Timeout=12 -o Acquire::https::Timeout=12 qemu-system-x86 xorriso
+          command -v qemu-system-x86_64
+          command -v xorriso
       - name: Build freestanding Rust ELF and Limine ISO
         run: make rust-iso RUST_FEATURES="--features boot-ownership-smoke"
       - name: Boot and check M04 frame claims plus M05 owner quarantine

@@ -17,14 +17,10 @@ permissions:
 
 jobs:
   rust-boot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install emulator and ISO tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 xorriso
       - name: Confirm pinned Rust toolchain
         working-directory: rust-kernel
         run: |
@@ -37,6 +33,15 @@ jobs:
           cargo clippy --release --offline -- -D warnings
       - name: Test serial diagnostic failure paths on host
         run: make rust-serial-test
+      - name: Install emulator and ISO tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Avoid a ten-minute hang when Ubuntu package mirrors are unreachable.
+          timeout 60s sudo apt-get update -o Acquire::Retries=0 -o Acquire::http::Timeout=12 -o Acquire::https::Timeout=12
+          timeout 90s sudo apt-get install -y -o Acquire::Retries=0 -o Acquire::http::Timeout=12 -o Acquire::https::Timeout=12 qemu-system-x86 xorriso
+          command -v qemu-system-x86_64
+          command -v xorriso
       - name: Build and inspect ELF then ISO
         run: make rust-iso
       - name: Boot QEMU and verify Rust READY
