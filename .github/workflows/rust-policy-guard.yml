@@ -1,0 +1,29 @@
+name: Rust policy guard tests
+
+on:
+  push:
+    paths:
+      - "experiments/rust-policy-guard/**"
+      - ".github/workflows/rust-policy-guard.yml"
+  pull_request:
+    paths:
+      - "experiments/rust-policy-guard/**"
+      - ".github/workflows/rust-policy-guard.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: experiments/rust-policy-guard
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy
+          rustup default stable
+      - name: Compile and run reference-model unit tests
+        run: cargo test
+      - name: Run Rust static lints
+        run: cargo clippy --all-targets -- -D warnings
