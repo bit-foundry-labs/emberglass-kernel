@@ -30,7 +30,35 @@ pub enum MapError {
     NoUsableSpan,
 }
 
+/// Errors for a bounded contiguous reservation from one monotonic pool.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReservationError {
+    ZeroPages,
+    AddressOverflow,
+    InsufficientFrames,
+}
+
+/// Immutable description of physical frame numbers, never a mapped pointer
+/// or transferable authority. Dropping this value does not free the frames.
+#[derive(Debug, PartialEq, Eq)]
+pub struct FrameRun {
+    start: u64,
+    pages: u64,
+}
+
+impl FrameRun {
+    /// Get a physical frame number within the reserved run, not a virtual address.
+    pub fn address_at(&self, index: u64) -> Option<u64> {
+        if index >= self.pages {
+            return None;
+        }
+        let offset = index.checked_mul(PAGE_BYTES)?;
+        self.start.checked_add(offset)
+    }
+}
+
 /// Monotonic bookkeeping for one BSP; not hardware ownership or a page table.
+/// The same physical range must never be supplied to a second FramePool.
 #[derive(Debug, PartialEq, Eq)]
 pub struct FramePool {
     next: u64,
@@ -38,14 +66,32 @@ pub struct FramePool {
 }
 
 impl FramePool {
-    pub fn claim(&mut self) -> Option<u64> {
-        let next = self.next.checked_add(PAGE_BYTES)?;
-        if next > self.end {
-            return None;
+    /// Atomically reserve a nonempty, consecutive run of frame numbers.
+    /// Validation errors and exhaustion leave the pool unchanged.
+    pub fn reserve_contiguous(&mut self, pages: u64) -> Result<FrameRun, ReservationError> {
+        if pages == 0 {
+            return Err(ReservationError::ZeroPages);
         }
-        let physical_address = self.next;
-        self.next = next;
-        Some(physical_address)
+        let bytes = pages
+            .checked_mul(PAGE_BYTES)
+            .ok_or(ReservationError::AddressOverflow)?;
+        let end = self
+            .next
+            .checked_add(bytes)
+            .ok_or(ReservationError::AddressOverflow)?;
+        if end > self.end {
+            return Err(ReservationError::InsufficientFrames);
+        }
+        let run = FrameRun {
+            start: self.next,
+            pages,
+        };
+        self.next = end;
+        Ok(run)
+    }
+
+    pub fn claim(&mut self) -> Option<u64> {
+        self.reserve_contiguous(1).ok()?.address_at(0)
     }
 
     pub const fn remaining(&self) -> u64 {
@@ -203,6 +249,68 @@ mod tests {
         assert_eq!(pool.remaining(), 0);
         assert_eq!(pool.claim(), None);
         assert_eq!(pool.claim(), None);
+    }
+
+    #[test]
+    fn contiguous_reservation_preserves_addresses_and_disjoint_claims() {
+        let mut pool = choose_pool(&[region(0x100000, 8 * PAGE_BYTES, 0)], 1).unwrap();
+        assert_eq!(pool.claim(), Some(0x100000));
+
+        let run = pool.reserve_contiguous(3).unwrap();
+        assert_eq!(run.address_at(0), Some(0x101000));
+        assert_eq!(run.address_at(1), Some(0x102000));
+        assert_eq!(run.address_at(2), Some(0x103000));
+        assert_eq!(run.address_at(3), None);
+        assert_eq!(pool.claim(), Some(0x104000));
+        assert_eq!(pool.remaining(), 3);
+    }
+
+    #[test]
+    fn zero_length_reservation_does_not_consume_frames() {
+        let mut pool = choose_pool(&[region(0x100000, 4 * PAGE_BYTES, 0)], 1).unwrap();
+        assert_eq!(pool.reserve_contiguous(0), Err(ReservationError::ZeroPages));
+        assert_eq!(pool.remaining(), 4);
+        assert_eq!(pool.claim(), Some(0x100000));
+    }
+
+    #[test]
+    fn insufficient_run_does_not_partially_reserve() {
+        let mut pool = choose_pool(&[region(0x100000, 2 * PAGE_BYTES, 0)], 1).unwrap();
+        assert_eq!(
+            pool.reserve_contiguous(3),
+            Err(ReservationError::InsufficientFrames)
+        );
+        assert_eq!(pool.remaining(), 2);
+        let full_run = pool.reserve_contiguous(2).unwrap();
+        assert_eq!(full_run.address_at(1), Some(0x101000));
+        assert_eq!(pool.remaining(), 0);
+        assert_eq!(
+            pool.reserve_contiguous(1),
+            Err(ReservationError::InsufficientFrames)
+        );
+        assert_eq!(pool.claim(), None);
+    }
+
+    #[test]
+    fn oversized_reservation_arithmetic_cannot_wrap_or_advance() {
+        let mut pool = choose_pool(&[region(0x100000, 4 * PAGE_BYTES, 0)], 1).unwrap();
+        assert_eq!(
+            pool.reserve_contiguous(u64::MAX),
+            Err(ReservationError::AddressOverflow)
+        );
+        assert_eq!(pool.remaining(), 4);
+        assert_eq!(pool.claim(), Some(0x100000));
+    }
+
+    #[test]
+    fn dropping_reservation_does_not_reissue_the_run() {
+        let mut pool = choose_pool(&[region(0x100000, 3 * PAGE_BYTES, 0)], 1).unwrap();
+        {
+            let run = pool.reserve_contiguous(2).unwrap();
+            assert_eq!(run.address_at(0), Some(0x100000));
+        }
+        assert_eq!(pool.claim(), Some(0x102000));
+        assert_eq!(pool.remaining(), 0);
     }
 
     #[test]
