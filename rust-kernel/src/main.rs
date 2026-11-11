@@ -21,6 +21,7 @@ mod boot_memory;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
 mod memory;
+mod paging_mode;
 mod serial;
 
 use core::arch::asm;
@@ -135,6 +136,21 @@ pub extern "C" fn kernel_entry() -> ! {
     // SAFETY: This is the single BSP at CPL0, with interrupts still disabled.
     unsafe { arch::install() };
     serial_write("BOOT: x86-64 GDT/TSS/IDT installed\n");
+    match paging_mode::check_active() {
+        Ok(()) => serial_write("PAGING: active four-level mode validated\n"),
+        Err(paging_mode::PagingModeError::PagingDisabled) => {
+            serial_write("ERROR: CR0.PG disabled\n");
+            halt_forever()
+        }
+        Err(paging_mode::PagingModeError::PhysicalAddressExtensionDisabled) => {
+            serial_write("ERROR: CR4.PAE disabled\n");
+            halt_forever()
+        }
+        Err(paging_mode::PagingModeError::FiveLevelPagingUnsupported) => {
+            serial_write("ERROR: CR4.LA57 five-level paging unsupported\n");
+            halt_forever()
+        }
+    }
     check_boot_memory();
 
     #[cfg(feature = "fault-ud")]
