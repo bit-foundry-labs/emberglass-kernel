@@ -127,8 +127,7 @@ mod tests {
 
     #[test]
     fn rejects_overflow_without_wrapping_to_low_addresses() {
-        let metadata =
-            AddressProvenance::new(0xffff_ffff_ffff_f000, 0x200000, EXEC_VA).unwrap();
+        let metadata = AddressProvenance::new(0xffff_ffff_ffff_f000, 0x200000, EXEC_VA).unwrap();
         assert_eq!(
             metadata.hhdm_candidate(0x1000),
             Err(ProvenanceError::AddressOverflow)
