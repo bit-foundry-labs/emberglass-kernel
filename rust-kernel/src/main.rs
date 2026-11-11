@@ -240,9 +240,7 @@ fn check_boot_memory() {
             halt_forever()
         }
     };
-    if provenance.hhdm_candidate(first).is_err()
-        || provenance.hhdm_candidate(second).is_err()
-    {
+    if provenance.hhdm_candidate(first).is_err() || provenance.hhdm_candidate(second).is_err() {
         serial_write("ERROR: frame HHDM address calculation failed\n");
         halt_forever()
     }
