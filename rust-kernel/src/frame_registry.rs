@@ -112,7 +112,10 @@ mod tests {
             (0x104000, 2, 2),
             (0x101000, 4, 1),
         ] {
-            assert_eq!(registry.reserve(start, pages, owner), Err(RegistryError::Overlap));
+            assert_eq!(
+                registry.reserve(start, pages, owner),
+                Err(RegistryError::Overlap)
+            );
         }
         assert_eq!(registry.count(), 1);
     }
@@ -149,7 +152,10 @@ mod tests {
     #[test]
     fn zero_capacity_fails_closed() {
         let mut registry = FrameRegistry::<0>::new();
-        assert_eq!(registry.reserve(0x100000, 1, 1), Err(RegistryError::CapacityExhausted));
+        assert_eq!(
+            registry.reserve(0x100000, 1, 1),
+            Err(RegistryError::CapacityExhausted)
+        );
     }
 
     #[test]
@@ -157,7 +163,10 @@ mod tests {
         let mut registry = FrameRegistry::<2>::new();
         let snapshot = registry.reserve(0x100000, 1, 7).unwrap();
         assert_eq!(snapshot, registry.entry(0).unwrap());
-        assert_eq!(registry.reserve(0x100000, 1, 8), Err(RegistryError::Overlap));
+        assert_eq!(
+            registry.reserve(0x100000, 1, 8),
+            Err(RegistryError::Overlap)
+        );
         assert_eq!(registry.count(), 1);
         assert_eq!(registry.entry(2), None);
     }
