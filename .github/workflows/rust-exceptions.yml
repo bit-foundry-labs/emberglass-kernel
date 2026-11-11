@@ -33,6 +33,25 @@ jobs:
           for mode in ud pf df; do
             cargo clippy --release --offline --features "fault-$mode" -- -D warnings
           done
+      - name: Reject conflicting QEMU fault-injection features
+        shell: bash
+        working-directory: rust-kernel
+        run: |
+          set -euo pipefail
+          mkdir -p ../build/exception-logs
+          for features in "fault-ud,fault-pf" "fault-ud,fault-df" "fault-pf,fault-df" "fault-ud,fault-pf,fault-df"; do
+            log="../build/exception-logs/conflicting-${features//,/-}.log"
+            if cargo check --release --offline --features "$features" >"$log" 2>&1; then
+              echo "Expected a compile-time rejection for $features" >&2
+              exit 1
+            fi
+            if ! grep -Fq "QEMU fault-injection features are mutually exclusive: choose only one of fault-ud, fault-pf, or fault-df." "$log"; then
+              echo "Compilation failed for an unexpected reason: $features" >&2
+              cat "$log" >&2
+              exit 1
+            fi
+            echo "PASS: conflicting fault modes rejected: $features"
+          done
       - name: Boot normal kernel and inject intentional CPU faults
         shell: bash
         run: |

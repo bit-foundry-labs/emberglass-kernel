@@ -3,6 +3,17 @@
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+// Each fault-injection feature deliberately terminates boot with its fault.
+// Combining modes would make the observed fault depend on execution order.
+#[cfg(any(
+    all(feature = "fault-ud", feature = "fault-pf"),
+    all(feature = "fault-ud", feature = "fault-df"),
+    all(feature = "fault-pf", feature = "fault-df"),
+))]
+compile_error!(
+    "QEMU fault-injection features are mutually exclusive: choose only one of fault-ud, fault-pf, or fault-df."
+);
+
 mod arch;
 mod boot_memory;
 #[cfg(feature = "boot-ownership-smoke")]
