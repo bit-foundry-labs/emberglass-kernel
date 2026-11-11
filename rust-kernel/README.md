@@ -60,11 +60,14 @@ CPU/device quiescence, none of which the current bookkeeping proves.
 - [M04](M04_PHYSICAL_MEMORY.md): Limine map validation and monotonic frame accounting.
 - [M05](M05_FRAME_LEDGER.md): bounded symbolic frame owners and quarantine-only
   transitions. This demonstration is not persistent hardware ownership.
+- [M06a address provenance](M06A_BOOT_PROVENANCE.md): Limine HHDM and executable
+  base metadata preflight; no dereferenced new mappings or page-table switch.
 
 Run host tests from repository root:
 
     make rust-memory-test
     make rust-ledger-test
+    make rust-provenance-test
 
 The normal kernel boot no longer executes the ownership test scenario. To run
 the M05 QEMU smoke test explicitly, build and boot with:
