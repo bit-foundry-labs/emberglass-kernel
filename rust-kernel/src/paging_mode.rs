@@ -41,8 +41,16 @@ pub fn check_active() -> Result<(), PagingModeError> {
     // SAFETY: Called only from the single privileged early-boot BSP path.
     // These instructions read control registers and do not change mappings.
     unsafe {
-        asm!("mov {value}, cr0", value = out(reg) cr0, options(nomem, nostack, preserves_flags));
-        asm!("mov {value}, cr4", value = out(reg) cr4, options(nomem, nostack, preserves_flags));
+        asm!(
+            "mov {value}, cr0",
+            value = out(reg) cr0,
+            options(nomem, nostack, preserves_flags)
+        );
+        asm!(
+            "mov {value}, cr4",
+            value = out(reg) cr4,
+            options(nomem, nostack, preserves_flags)
+        );
     }
     validate(cr0, cr4)
 }
