@@ -36,6 +36,8 @@ The default branch **boots a freestanding Rust `no_std` kernel in headless QEMU*
 
 A passing QEMU or host-test check proves only the tested milestone. It does **not** establish hardware isolation, kernel-level capability enforcement, production security, scheduler superiority, or a functioning AI operating system.
 
+**Next proposed engineering boundary:** [M06 page-table transition contract](docs/PAGING_TRANSITION_V1.md) specifies the required memory mappings, frame reservations, failure behavior, and QEMU evidence before Embers can safely replace Limine's page-table root. It is a review proposal, not a completed milestone.
+
 ## Boot Embers in headless QEMU
 
 **Development emulator only. Do not boot on physical hardware.** On Ubuntu or WSL2 Ubuntu, install Rust via [rustup](https://rustup.rs) and then:
@@ -77,7 +79,6 @@ A useful first contribution is a narrow, verifiable improvement, not a sweeping 
 
 - **First contribution, documentation:** [Reproduce the Rust QEMU boot on a fresh Ubuntu/WSL machine](https://github.com/bit-foundry-labs/embers-kernel/issues/8).
 - **First contribution, code review:** [Document the early-boot `unsafe` contracts](https://github.com/bit-foundry-labs/embers-kernel/issues/33).
-- **Intermediate, testing:** [Reject conflicting QEMU fault-injection features](https://github.com/bit-foundry-labs/embers-kernel/issues/34).
 - **Intermediate, architecture:** [Measure the Rust kernel's tested x86-64 CPU baseline](https://github.com/bit-foundry-labs/embers-kernel/issues/9).
 
 For deeper research, see the [capability threat-model task](https://github.com/bit-foundry-labs/embers-kernel/issues/12) and the [contributor-launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24).
