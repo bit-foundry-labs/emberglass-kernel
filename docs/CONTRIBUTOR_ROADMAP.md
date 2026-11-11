@@ -15,6 +15,7 @@ This is a research sequence, not a release schedule. Work is tracked in issues a
 ## Isolation: the real microkernel
 - Persistent physical frame ownership, kernel-owned page tables, supervisor/user permission boundaries, and safe zeroing/reclamation. The M05 accounting demo does not enforce these.
 - First separate user-mode task and validated syscall/IPC boundary.
+- [IPC v1 proposed contract](IPC_V1_CONTRACT.md): authorization, bounded message copying, ordering, failure outcomes, revocation, and negative-path tests. This is not yet an implemented IPC facility.
 - Capability handle table; revocation, attenuation, stale-handle rejection.
 - Deterministic scheduling, CPU time budgets and documented admission assumptions.
 - Crash isolation and restartable user-space services, with state-recovery tests.
@@ -26,14 +27,13 @@ This is a research sequence, not a release schedule. Work is tracked in issues a
 - Optional accelerator broker, after device isolation and DMA ownership semantics are implemented.
 
 ## Read before proposing a large subsystem
-- [Architecture ADR PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3) contains candidate designs, **not implemented guarantees**.
+- [Closed architecture research PR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3) preserves earlier proposals as historical context, **not implemented guarantees**.
 - [Research issue #4](https://github.com/bit-foundry-labs/embers-kernel/issues/4) defines the initial benchmark questions.
 
 ## Available first contributions
 
 - [#8: independent Ubuntu/WSL QEMU reproduction](https://github.com/bit-foundry-labs/embers-kernel/issues/8), documentation-only.
 - [#33: inventory early boot `unsafe` boundaries](https://github.com/bit-foundry-labs/embers-kernel/issues/33), documentation-only.
-- [#34: conflicting fault-feature negative-path tests](https://github.com/bit-foundry-labs/embers-kernel/issues/34), narrowly scoped Rust.
 - [#9: tested QEMU CPU baseline matrix](https://github.com/bit-foundry-labs/embers-kernel/issues/9), intermediate architecture/compatibility.
 
 Claim an issue by commenting with your intended approach and environment. Each issue has testable acceptance criteria. Do not boot on physical hardware.
