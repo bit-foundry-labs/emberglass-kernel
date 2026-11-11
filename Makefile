@@ -34,6 +34,13 @@ rust-ledger-test:
 	cd rust-kernel && rustc --edition=2021 --test tests/frame_ledger_host.rs -o ../build/embers-frame-ledger-tests
 	./build/embers-frame-ledger-tests
 
+# Host-only tests of validated Limine address arithmetic, not real mappings.
+.PHONY: rust-provenance-test
+rust-provenance-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test tests/address_provenance_host.rs -o ../build/embers-address-provenance-tests
+	./build/embers-address-provenance-tests
+
 # Host-only tests of bounded serial diagnostic error propagation.
 .PHONY: rust-serial-test
 rust-serial-test:

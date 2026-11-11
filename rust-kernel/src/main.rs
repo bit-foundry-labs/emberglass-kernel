@@ -14,7 +14,9 @@ compile_error!(
     "QEMU fault-injection features are mutually exclusive: choose only one of fault-ud, fault-pf, or fault-df."
 );
 
+mod address_provenance;
 mod arch;
+mod boot_addresses;
 mod boot_memory;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
@@ -212,6 +214,46 @@ fn check_boot_memory() {
         serial_write("ERROR: initial reservation invariant failed\n");
         halt_forever()
     };
+    // These are address *numbers* and a Limine trust contract, not mappings
+    // created or verified by Embers. The selected frames are USABLE map entries.
+    let provenance = match boot_addresses::load() {
+        Ok(provenance) => provenance,
+        Err(boot_addresses::BootAddressError::MissingHhdmResponse) => {
+            serial_write("ERROR: Limine HHDM response missing\n");
+            halt_forever()
+        }
+        Err(boot_addresses::BootAddressError::MissingExecutableResponse) => {
+            serial_write("ERROR: Limine executable address response missing\n");
+            halt_forever()
+        }
+        Err(boot_addresses::BootAddressError::InvalidMetadata(reason)) => {
+            serial_write("ERROR: Limine address metadata invalid: ");
+            let label = match reason {
+                address_provenance::ProvenanceError::InvalidDirectMapOffset => "HHDM offset",
+                address_provenance::ProvenanceError::InvalidExecutableBase => "executable base",
+                address_provenance::ProvenanceError::UnalignedFrame => "unaligned frame",
+                address_provenance::ProvenanceError::AddressOverflow => "address overflow",
+                address_provenance::ProvenanceError::NonCanonicalAddress => "noncanonical address",
+            };
+            serial_write(label);
+            serial_write("\n");
+            halt_forever()
+        }
+    };
+    if provenance.hhdm_candidate(first).is_err() || provenance.hhdm_candidate(second).is_err() {
+        serial_write("ERROR: frame HHDM address calculation failed\n");
+        halt_forever()
+    }
+    serial_write("ADDRESS: Limine HHDM and executable bases validated\n");
+    serial_write("ADDRESS: HHDM offset = ");
+    serial_write_hex(provenance.hhdm_offset);
+    serial_write("\n");
+    serial_write("ADDRESS: executable physical base = ");
+    serial_write_hex(provenance.executable_physical_base);
+    serial_write("\n");
+    serial_write("ADDRESS: executable virtual base = ");
+    serial_write_hex(provenance.executable_virtual_base);
+    serial_write("\n");
     serial_write("MEMORY: validated Limine map for physical frame accounting\n");
     serial_write("MEMORY: frame claim 1 = ");
     serial_write_hex(first);

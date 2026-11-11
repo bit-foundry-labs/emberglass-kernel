@@ -28,6 +28,7 @@ jobs:
         run: |
           make rust-memory-test
           make rust-ledger-test
+          make rust-provenance-test
       - name: Install QEMU and ISO prerequisites
         shell: bash
         run: |
@@ -62,6 +63,9 @@ jobs:
           serial = Path("build/m04-serial.log").read_text()
           assert "ERROR:" not in serial
           assert "MEMORY: validated Limine map for physical frame accounting" in serial
+          assert "ADDRESS: Limine HHDM and executable bases validated" in serial
+          for field in ("HHDM offset", "executable physical base", "executable virtual base"):
+              assert re.search(rf"ADDRESS: {field} = 0x[0-9a-f]{{16}}", serial), field
           assert "READY: Embers Rust no_std entry reached." in serial
           values = re.findall(
               r"MEMORY: frame claim [12] = 0x([0-9a-f]{16})", serial
