@@ -36,6 +36,13 @@ The ISO script downloads an explicitly pinned Limine v12.9.6 archive
 and verifies its SHA-256 before extraction. No hosted model services
 or paid APIs are involved.
 
+## Unsafe boundary audit
+
+Before changing CPU mappings, bootloader handoff, descriptor tables or fault
+entry paths, review the [source-linked unsafe inventory](UNSAFE_BOUNDARIES.md).
+It separates Rust memory-safety assumptions from privilege enforcement and
+CPU/device quiescence, none of which the current bookkeeping proves.
+
 ## Safety limits
 
 - Limine provides long mode, page tables and a stack. These are
