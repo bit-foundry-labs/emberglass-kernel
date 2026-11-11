@@ -62,6 +62,9 @@ CPU/device quiescence, none of which the current bookkeeping proves.
   transitions. This demonstration is not persistent hardware ownership.
 - [M06a address provenance](M06A_BOOT_PROVENANCE.md): Limine HHDM and executable
   base metadata preflight; no dereferenced new mappings or page-table switch.
+- [M06e transactional reservations](M06E_TRANSACTIONAL_RESERVATIONS.md): one
+  BSP-owned path that stages pool+registry validation before committing a
+  reservation record; still bookkeeping, not hardware memory isolation.
 
 Run host tests from repository root:
 

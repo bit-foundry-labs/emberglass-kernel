@@ -21,6 +21,7 @@ mod boot_memory;
 mod boot_pool_gate;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
+mod frame_registry;
 mod memory;
 mod paging_mode;
 mod serial;
@@ -187,7 +188,7 @@ pub extern "C" fn kernel_entry() -> ! {
 }
 
 fn check_boot_memory() {
-    let mut pool = match boot_memory::initial_frame_pool() {
+    let pool = match boot_memory::initial_frame_pool() {
         Ok(pool) => pool,
         Err(boot_memory::BootMapError::AlreadyIssued) => {
             serial_write("ERROR: boot frame pool already issued\n");
@@ -220,21 +221,26 @@ fn check_boot_memory() {
             halt_forever()
         }
     };
+    let mut allocator = frame_registry::TransactionalFrameAllocator::<16>::new(pool);
 
     // Reserve both diagnostic frames in one bounded operation. This is only
     // physical-address bookkeeping; neither page is mapped or zeroed here.
-    let initial_frames = match pool.reserve_contiguous(2) {
-        Ok(run) => run,
+    let initial = match allocator.reserve(2, 1) {
+        Ok(reservation) => reservation,
         Err(_) => {
             serial_write("ERROR: initial frame reservation failed\n");
             halt_forever()
         }
     };
-    let (Some(first), Some(second)) = (initial_frames.address_at(0), initial_frames.address_at(1))
-    else {
+    let Some(second) = initial.start.checked_add(memory::PAGE_BYTES) else {
         serial_write("ERROR: initial reservation invariant failed\n");
         halt_forever()
     };
+    if !second.is_multiple_of(memory::PAGE_BYTES) {
+        serial_write("ERROR: initial reservation invariant failed\n");
+        halt_forever()
+    }
+    let first = initial.start;
     // These are address *numbers* and a Limine trust contract, not mappings
     // created or verified by Embers. The selected frames are USABLE map entries.
     let provenance = match boot_addresses::load() {
@@ -283,12 +289,12 @@ fn check_boot_memory() {
     serial_write_hex(second);
     serial_write("\n");
     serial_write("MEMORY: remaining pages in selected span = ");
-    serial_write_hex(pool.remaining());
+    serial_write_hex(allocator.remaining_pages());
     serial_write("\n");
 
     // The normal boot checks frame accounting without running test scenarios.
     #[cfg(feature = "boot-ownership-smoke")]
-    run_ownership_smoke(&mut pool);
+    run_ownership_smoke(allocator.pool_mut());
 }
 
 #[cfg(feature = "boot-ownership-smoke")]

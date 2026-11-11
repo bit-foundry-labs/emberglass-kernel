@@ -1,6 +1,6 @@
 //! M06d: bounded, single-writer reservation bookkeeping for physical ranges.
 //! This module does not authenticate callers or establish mapping authority.
-use crate::memory::{MIN_PHYSICAL_ADDRESS, PAGE_BYTES};
+use crate::memory::{FramePool, ReservationError, MIN_PHYSICAL_ADDRESS, PAGE_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FrameReservation {
@@ -19,6 +19,13 @@ pub enum RegistryError {
     CapacityExhausted,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransactionError {
+    Pool(ReservationError),
+    Registry(RegistryError),
+    InvariantViolation,
+}
+
 /// A single-writer, fixed-capacity registry. Reservations never expire, and
 /// there is deliberately no release path until safe reclamation is specified.
 pub struct FrameRegistry<const N: usize> {
@@ -34,17 +41,13 @@ impl<const N: usize> FrameRegistry<N> {
         }
     }
 
+    #[allow(dead_code)]
     pub const fn count(&self) -> usize {
         self.count
     }
 
-    /// Record a trusted physical run without touching actual physical memory.
-    /// Any rejection leaves all registry entries unchanged.
-    ///
-    /// Caller must independently establish that the range is USABLE, uniquely
-    /// sourced, and not accessible through conflicting CPU or device mappings.
-    pub fn reserve(
-        &mut self,
+    fn validate(
+        &self,
         start: u64,
         pages: u64,
         owner: u32,
@@ -55,7 +58,7 @@ impl<const N: usize> FrameRegistry<N> {
         if pages == 0 {
             return Err(RegistryError::ZeroPages);
         }
-        if start < MIN_PHYSICAL_ADDRESS || start % PAGE_BYTES != 0 {
+        if start < MIN_PHYSICAL_ADDRESS || !start.is_multiple_of(PAGE_BYTES) {
             return Err(RegistryError::InvalidStart);
         }
         let bytes = pages
@@ -75,24 +78,106 @@ impl<const N: usize> FrameRegistry<N> {
             return Err(RegistryError::CapacityExhausted);
         }
 
-        let reservation = FrameReservation {
+        Ok(FrameReservation {
             start,
             pages,
             owner,
-        };
+        })
+    }
+
+    fn insert_validated(&mut self, reservation: FrameReservation) {
         self.entries[self.count] = Some(reservation);
         self.count += 1;
+    }
+
+    /// Record a trusted physical run without touching actual physical memory.
+    /// Any rejection leaves all registry entries unchanged.
+    ///
+    /// Caller must independently establish that the range is USABLE, uniquely
+    /// sourced, and not accessible through conflicting CPU or device mappings.
+    #[allow(dead_code)]
+    pub fn reserve(
+        &mut self,
+        start: u64,
+        pages: u64,
+        owner: u32,
+    ) -> Result<FrameReservation, RegistryError> {
+        let reservation = self.validate(start, pages, owner)?;
+        self.insert_validated(reservation);
         Ok(reservation)
     }
 
+    #[allow(dead_code)]
     pub fn entry(&self, index: usize) -> Option<FrameReservation> {
         self.entries.get(index).copied().flatten()
+    }
+}
+
+/// Single BSP-owned allocation authority: one pool + one registry.
+pub struct TransactionalFrameAllocator<const N: usize> {
+    pool: FramePool,
+    registry: FrameRegistry<N>,
+}
+
+impl<const N: usize> TransactionalFrameAllocator<N> {
+    pub fn new(pool: FramePool) -> Self {
+        Self {
+            pool,
+            registry: FrameRegistry::new(),
+        }
+    }
+
+    /// Reserve contiguous pages and record ownership exactly once.
+    /// Rejections leave both pool and registry unchanged.
+    pub fn reserve(
+        &mut self,
+        pages: u64,
+        owner: u32,
+    ) -> Result<FrameReservation, TransactionError> {
+        let run = self
+            .pool
+            .preview_contiguous(pages)
+            .map_err(TransactionError::Pool)?;
+        let start = run
+            .address_at(0)
+            .ok_or(TransactionError::InvariantViolation)?;
+        let reservation = self
+            .registry
+            .validate(start, pages, owner)
+            .map_err(TransactionError::Registry)?;
+        self.pool
+            .reserve_contiguous(pages)
+            .map_err(TransactionError::Pool)?;
+        self.registry.insert_validated(reservation);
+        Ok(reservation)
+    }
+
+    pub const fn remaining_pages(&self) -> u64 {
+        self.pool.remaining()
+    }
+
+    #[cfg(feature = "boot-ownership-smoke")]
+    pub fn pool_mut(&mut self) -> &mut FramePool {
+        &mut self.pool
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::memory::{choose_pool, Region, USABLE_KIND};
+
+    fn pool(pages: u64) -> FramePool {
+        choose_pool(
+            &[Region {
+                base: MIN_PHYSICAL_ADDRESS,
+                length: PAGE_BYTES * pages,
+                kind: USABLE_KIND,
+            }],
+            1,
+        )
+        .unwrap()
+    }
 
     #[test]
     fn adjacent_ranges_and_distinct_owners_are_allowed() {
@@ -169,5 +254,38 @@ mod tests {
         );
         assert_eq!(registry.count(), 1);
         assert_eq!(registry.entry(2), None);
+    }
+
+    #[test]
+    fn transactional_capacity_rejection_leaves_pool_and_registry_unchanged() {
+        let mut allocator = TransactionalFrameAllocator::<1>::new(pool(4));
+        let first = allocator.reserve(1, 1).unwrap();
+        assert_eq!(first.start, 0x100000);
+
+        let remaining_before = allocator.remaining_pages();
+        let count_before = allocator.registry.count();
+        assert_eq!(
+            allocator.reserve(1, 2),
+            Err(TransactionError::Registry(RegistryError::CapacityExhausted))
+        );
+        assert_eq!(allocator.registry.count(), count_before);
+        assert_eq!(allocator.remaining_pages(), remaining_before);
+        assert_eq!(allocator.registry.entry(0), Some(first));
+    }
+
+    #[test]
+    fn transactional_overlap_rejection_does_not_advance_pool() {
+        let mut allocator = TransactionalFrameAllocator::<2>::new(pool(4));
+        allocator.registry.reserve(0x100000, 1, 9).unwrap();
+
+        let remaining_before = allocator.remaining_pages();
+        let count_before = allocator.registry.count();
+        assert_eq!(
+            allocator.reserve(1, 1),
+            Err(TransactionError::Registry(RegistryError::Overlap))
+        );
+        assert_eq!(allocator.registry.count(), count_before);
+        assert_eq!(allocator.remaining_pages(), remaining_before);
+        assert_eq!(allocator.registry.entry(0).unwrap().owner, 9);
     }
 }

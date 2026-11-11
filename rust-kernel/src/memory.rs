@@ -66,27 +66,38 @@ pub struct FramePool {
 }
 
 impl FramePool {
-    /// Atomically reserve a nonempty, consecutive run of frame numbers.
-    /// Validation errors and exhaustion leave the pool unchanged.
-    pub fn reserve_contiguous(&mut self, pages: u64) -> Result<FrameRun, ReservationError> {
+    fn checked_run(next: u64, end: u64, pages: u64) -> Result<FrameRun, ReservationError> {
         if pages == 0 {
             return Err(ReservationError::ZeroPages);
         }
         let bytes = pages
             .checked_mul(PAGE_BYTES)
             .ok_or(ReservationError::AddressOverflow)?;
-        let end = self
+        let reservation_end = next
+            .checked_add(bytes)
+            .ok_or(ReservationError::AddressOverflow)?;
+        if reservation_end > end {
+            return Err(ReservationError::InsufficientFrames);
+        }
+        Ok(FrameRun { start: next, pages })
+    }
+
+    /// Validate a nonempty consecutive reservation without advancing the pool.
+    pub fn preview_contiguous(&self, pages: u64) -> Result<FrameRun, ReservationError> {
+        Self::checked_run(self.next, self.end, pages)
+    }
+
+    /// Atomically reserve a nonempty, consecutive run of frame numbers.
+    /// Validation errors and exhaustion leave the pool unchanged.
+    pub fn reserve_contiguous(&mut self, pages: u64) -> Result<FrameRun, ReservationError> {
+        let run = Self::checked_run(self.next, self.end, pages)?;
+        let bytes = pages
+            .checked_mul(PAGE_BYTES)
+            .ok_or(ReservationError::AddressOverflow)?;
+        self.next = self
             .next
             .checked_add(bytes)
             .ok_or(ReservationError::AddressOverflow)?;
-        if end > self.end {
-            return Err(ReservationError::InsufficientFrames);
-        }
-        let run = FrameRun {
-            start: self.next,
-            pages,
-        };
-        self.next = end;
         Ok(run)
     }
 

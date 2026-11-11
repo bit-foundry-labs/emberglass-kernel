@@ -18,8 +18,9 @@ invalid requests, failure atomicity, zero capacity, and no reuse.
   physical addresses. No globally exclusive singleton is established.
 - Input ranges are *not* checked against the actual Limine USABLE memory map.
   Caller identity and owner IDs are not authenticated.
-- The existing FramePool and FrameLedger bypass this module. There is no
-  kernel boot integration and no enforcement of physical ownership yet.
+- M06e adds one integrated BSP boot path, but bypasses still exist: direct
+  `FramePool` calls, independently constructed registries, and the optional
+  M05 ledger smoke path that consumes a pool without consulting the registry.
 - This is one-writer metadata. No synchronization, allocator lifetime
   contract, hardware page permissions, zeroing, DMA/IOMMU quiescence, or
   reclaim-after-revocation proof is provided.
