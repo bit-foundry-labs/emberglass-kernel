@@ -63,7 +63,8 @@ mod tests {
         }
         let successes = threads
             .into_iter()
-            .filter(|thread| thread.join().unwrap().is_ok())
+            .map(|thread| thread.join().unwrap())
+            .filter(Result::is_ok)
             .count();
         assert_eq!(successes, 1);
         assert_eq!(gate.try_issue(), Err(GateError::AlreadyIssued));
