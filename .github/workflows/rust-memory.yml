@@ -29,6 +29,7 @@ jobs:
           make rust-memory-test
           make rust-ledger-test
           make rust-provenance-test
+          make rust-boot-pool-gate-test
       - name: Install QEMU and ISO prerequisites
         shell: bash
         run: |

@@ -18,6 +18,7 @@ mod address_provenance;
 mod arch;
 mod boot_addresses;
 mod boot_memory;
+mod boot_pool_gate;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
 mod memory;
@@ -188,6 +189,10 @@ pub extern "C" fn kernel_entry() -> ! {
 fn check_boot_memory() {
     let mut pool = match boot_memory::initial_frame_pool() {
         Ok(pool) => pool,
+        Err(boot_memory::BootMapError::AlreadyIssued) => {
+            serial_write("ERROR: boot frame pool already issued\n");
+            halt_forever()
+        }
         Err(boot_memory::BootMapError::NoResponse) => {
             serial_write("ERROR: Limine memory map response missing\n");
             halt_forever()
