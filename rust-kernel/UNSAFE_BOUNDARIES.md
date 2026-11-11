@@ -1,0 +1,61 @@
+# Unsafe boundaries in the early Rust kernel
+
+**Audit scope:** `rust-kernel/src/main.rs`, `arch.rs`, and `boot_memory.rs` on `main` at commit `f12d9d87d2aa5262435b59522f7d70cc8a187681` (the PR #41 squash commit).
+
+**Status:** Source-level inventory, not formal verification or evidence that external pointers and hardware state are safe. This audit makes **no code changes**. Follow the linked function names, not line numbers; revisit the inventory when a source contract changes.
+
+The current execution model is one bootstrap CPU (BSP), CPL0, interrupts disabled, Limine-owned initial page tables and boot stack, no user address spaces, and no DMA isolation. All QEMU results apply to this environment, not arbitrary hardware or multicore configurations.
+
+## Mechanism-by-mechanism inventory
+
+| Site | Required precondition and trust boundary | Failure behavior or risk | Existing evidence; untested assumption |
+| --- | --- | --- | --- |
+| [`main.rs::port_write` / `port_read`](src/main.rs) | Caller has CPL0 I/O privilege; legacy COM1 port responds as expected. `asm!` uses `out` / `in` and explicit register operands. | Inappropriate privilege or port availability can cause a CPU fault or nonfunctional diagnostics. | Normal and fault-mode QEMU serial logs exercise this path. **Untested:** physical UART availability and I/O restrictions outside QEMU. |
+| [`main.rs::serial_init`, `serial_write_byte`, `serial_write`](src/main.rs) | Exclusive BSP access during early boot; UART register layout; bounded ready polling. | A transmit timeout makes the diagnostic writer halt, with no recursive recovery output. Incomplete serial logs are possible. | M02 boot/READY CI and bounded serial host tests. **Untested:** concurrent writers, real UART timing, and hardware-fault recovery. |
+| [`main.rs::limine_revision_supported`](src/main.rs) | Limine has populated `BASE_REVISION` before handoff; writable `static mut` lies in a mapped segment; no later concurrent writer. The volatile read only observes memory. | Unsupported revision leads to an error marker and halt; **invalid pointers or corrupted bootloader state are not authenticated** by this check. | M02 normal QEMU boot exercises supported revision. **Untested:** corrupted revision storage and hostile bootloader behavior. |
+| [`main.rs::kernel_entry`](src/main.rs) | Limine enters at CPL0 with valid long-mode CPU state, mapped kernel image and writable stack, and interrupts disabled. It is the single initializing core. | A failed boot prerequisite can halt or trigger a fault; there is no recovery path. | M02 QEMU READY; M03 fault tests. **Untested:** arbitrary hardware, SMP boot, other Limine configurations, or interrupted initialization. |
+| [`arch.rs::install`](src/arch.rs) | Runs once on the BSP at CPL0, with mapped, writable `GDT`, `TSS`, `IDT`, and double-fault stack; no CPU concurrently uses partly initialized descriptors. Assembly executes `cli`, `lgdt`, far return, segment loads, `ltr`, and `lidt`. | A malformed descriptor or stack can fault during exception delivery, potentially escalating to a double/triple fault. | M03 QEMU #UD/#PF/#DF tests exercise installed descriptors. **Untested:** ring-3 transitions, SMP descriptor ownership, RSP0 use, and resumable interrupts. |
+| [`arch.rs::global_asm!` exception stubs](src/arch.rs) | x86-64 CPU exception frame layout is exactly the assumed one; #UD has no error code, #DF/#GP/#PF push an error code; the #DF handler receives IST1 stack. Stubs align RSP and pass vector/RIP/error code to a nonreturning Rust reporter. | Wrong frame offsets, stack alignment, or a missing mapped stack can misreport RIP or fault again. Stubs do **not** preserve interrupted registers or return. | M03 asserts fault markers and saved RIP in QEMU. **Untested:** user-origin traps, privilege-change frames, resumable interrupts and all unhandled vectors. |
+| [`arch.rs::trigger_page_fault`](src/arch.rs) | Only enabled by `fault-pf`/`fault-df`; a selected canonical virtual address is unmapped in the test image; CPL0 test runs in disposable QEMU. | An accidental mapping may prevent the intended #PF; a fault is intentionally fatal. | M03 QEMU #PF/#DF markers. **Untested:** other address layouts or bootloader mapping configurations. |
+| [`arch.rs::remove_page_fault_gate_for_test`](src/arch.rs) | Only compiled with `fault-df`; sole core has exclusive write access to the mapped IDT; removing the #PF gate is **only** a fault-injection technique. | Deliberately prevents ordinary #PF delivery and provokes #DF; unsafe outside the isolated test. | M03 QEMU #DF with saved RIP. **Untested:** concurrent interrupts, real hardware and fault containment beyond the test. |
+| [`arch.rs::page_fault_address`](src/arch.rs) | Reading `cr2` occurs at CPL0 in the synchronous exception reporter, before an unrelated fault could replace the intended address. | Could report an unrelated fault address if future concurrency or nested faults change CR2. | M03 QEMU page-fault log includes CR2. **Untested:** nested/concurrent faults and user-origin page faults. |
+| [`main.rs::embers_report_exception`, `halt_forever`](src/main.rs) | Called from nonreturning privileged stubs, or fatal boot paths. `cli` and `hlt` assume CPL0; halt loop intentionally cannot resume scheduling. | Execution stops; missing UART output is not evidence of successful isolation or fault recovery. | M03 QEMU fault log and M02 boot marker. **Untested:** multicore shutdown and IRQ-driven recovery. |
+| [`boot_memory.rs::initial_frame_pool`](src/boot_memory.rs) | Limine is the sole writer before handoff and supplies a stable, correctly aligned, initialized, mapped response struct; `read_volatile` does **not** validate pointer provenance. | Null response, zero/excessive count, null entry and malformed region *values* return errors; a nonnull dangling/unmapped pointer can still cause undefined behavior or a CPU fault before the value checks. | M04 host tests cover copied region validation; QEMU validates a normal Limine map. **Untested:** malicious/dangling response pointers, concurrent bootloader mutation and post-CR3 mapping lifetime. |
+| [`boot_memory.rs` pointer-array walk](src/boot_memory.rs) | Limine's `entries` pointer references at least the bounded `entry_count` valid, aligned pointers; each nonnull entry references an initialized `LimineMemoryMapEntry` with the expected ABI. | Count is bounded at 128, but this cannot establish that the pointed-to bytes are allocated or readable. Bad pointers can violate Rust safety before `choose_pool` runs. | M04 QEMU with an ordinary map; pure-Rust region tests. **Untested:** corrupted pointer array, ABI mismatch, pointer aliasing and transient mappings. |
+
+## Trusted data vs. actual authority
+
+- [`memory.rs::choose_pool`](src/memory.rs) is safe Rust numeric validation. It checks zero lengths, wraparound, overlaps (including reserved regions), alignment, and a minimum usable span. The resulting [`FramePool`](src/memory.rs) returns **physical address numbers**, not mapped pages or hardware ownership.
+- [`frame_ledger.rs::FrameLedger`](src/frame_ledger.rs) records symbolic owners and quarantines frames in a single-writer demonstration, compiled into the QEMU boot only with `boot-ownership-smoke`. Tokens are **not** kernel-authenticated process capabilities; independently constructed overlapping pools can reuse an identity. Permanent quarantine is a bookkeeping prohibition, not a DMA fence.
+- The kernel inherits Limine's address mappings, including the executable image, stack, request/response structures, GDT/TSS/IDT statics and COM1 I/O assumptions. It does **not** presently verify page permissions or that physical frames are exclusively inaccessible to other agents.
+
+These are **three different obligations** that must not be conflated:
+
+1. **Rust memory safety:** Unsafe code must never dereference invalid pointers, construct invalid references, or violate aliasing and initialization requirements. Bounding the *number* of Limine pointers does not prove their validity.
+2. **Privilege and capability authority:** Hardware page permissions and kernel-validated caller rights must prevent unauthorized access even when a user guesses a physical address or identifier. The present owner ledger cannot do this.
+3. **CPU/device reclamation safety:** Removing future authorization does not establish that in-flight CPU accesses, device DMA or IOMMU translations have stopped. Safe frame reuse needs mapping teardown, synchronization/quiescence and explicit hardware-aware evidence.
+
+## Gates before kernel-owned page tables
+
+1. Specify which existing Limine mappings must remain usable during transition, including the executing instruction, current stack, exception stacks, serial diagnostics, bootloader data and page-table frames.
+2. Ensure every new page-table frame is reserved from a uniquely owned, nonoverlapping physical pool; define initialization/zeroing access and prevent its reuse before old mappings are retired.
+3. Define page-table ownership, canonical virtual addresses, page alignment, permission defaults (supervisor-only, non-executable data where supported), and what constitutes a valid mapped pointer.
+4. Prove a transition sequence with failure containment before changing CR3; add QEMU smoke and deliberate negative-path faults. A successful host test is not evidence of page-table isolation.
+5. Revisit CPU feature requirements, TLB invalidation, and SMP/DMA assumptions before extending beyond the single-core emulator baseline.
+
+## How to reproduce existing checks
+
+From the repository root on Ubuntu/WSL, with the pinned toolchain and QEMU dependencies:
+
+```sh
+make rust-check
+make rust-memory-test
+make rust-ledger-test
+make rust-iso
+```
+
+The repository's M02, M03 and M04/M05 GitHub Actions workflows additionally run QEMU normal/fault/ownership-smoke checks. The local audit environment used to prepare this document did **not** have `cargo`, `rustc`, or `qemu-system-x86_64`; therefore **no local Rust build or emulator result is claimed**. Evaluate the PR checks independently, and do not treat passing CI as exhaustive proof.
+
+## Review triggers
+
+Update this inventory when introducing a page-table writer, changing Limine protocol requirements, accepting new user pointers, adding a user/privilege transition, enabling interrupts or SMP, or implementing a device/IOMMU interface. Sources: [M03](M03_EXCEPTIONS.md), [M04](M04_PHYSICAL_MEMORY.md), [M05](M05_FRAME_LEDGER.md).
