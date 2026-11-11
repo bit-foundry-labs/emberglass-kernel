@@ -29,8 +29,36 @@ Expected serial marker:
     READY: Embers Rust no_std entry reached.
 
 The kernel intentionally stops with interrupts disabled in a halt loop.
-Stop QEMU with Ctrl+C. This M02 boot profile uses "-cpu max" and does
-not establish the minimum supported CPU baseline; see issue #9.
+Stop QEMU with Ctrl+C.
+
+## M02 tested QEMU CPU baseline (issue #9)
+
+This section documents measured **emulator-only** compatibility evidence for the
+Rust kernel boot path. It does not claim physical-hardware compatibility.
+
+- Host OS: Ubuntu 24.04.5 LTS (`PRETTY_NAME="Ubuntu 24.04.5 LTS"`)
+- QEMU: `QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)`
+- Pinned Rust toolchain: `1.90.0` from `rust-toolchain.toml`
+- Active build toolchain in `rust-kernel/`: `rustc 1.90.0`, `cargo 1.90.0`
+- Build commit: `acd442192b5e0aa46eadf5ccb13ce721b399a2e0`
+
+Method: for each CPU model, run `make clean && make rust-iso`, then boot once
+with `-d int,guest_errors -D <debug-log>` and serial capture.
+
+| QEMU CPU model | Why included | Exit status | READY | ERROR marker | QEMU exception/debug notes |
+| --- | --- | --- | --- | --- | --- |
+| `max` | Existing permissive control profile | `124` (timeout after successful boot halt-loop) | yes | no | Only repeating `Servicing hardware INT=0x08`; no `guest_errors` exceptions observed |
+| `qemu64` | Conservative named baseline model from `qemu-system-x86_64 -cpu help` | `124` | yes | no | Same as control; no additional exception diagnostics |
+| `max,-avx` | Feature-subtracted control to check AVX independence on this QEMU version | `124` | yes | no | Same as control; no additional exception diagnostics |
+
+No model in this matrix failed. Therefore failure classification by
+fault address/instruction/compiler flags is not applicable for this run.
+
+Recommended CI smoke profile: keep `-cpu max` as control and add a focused
+`-cpu qemu64` lane so regressions against the conservative tested emulator model
+are caught automatically. Minimum **tested emulator model** from this evidence:
+`qemu64` on QEMU 8.2.2. This remains an emulator measurement, not a real-hardware
+or production-support guarantee.
 
 The ISO script downloads an explicitly pinned Limine v12.9.6 archive
 and verifies its SHA-256 before extraction. No hosted model services
