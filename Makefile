@@ -61,3 +61,10 @@ rust-boot-pool-gate-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test tests/boot_pool_gate_host.rs -o ../build/embers-boot-pool-gate-tests
 	./build/embers-boot-pool-gate-tests
+
+# Host-only M06d range-registry invariants; does not claim hardware ownership.
+.PHONY: rust-frame-registry-test
+rust-frame-registry-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test tests/frame_registry_host.rs -o ../build/embers-frame-registry-tests
+	./build/embers-frame-registry-tests
