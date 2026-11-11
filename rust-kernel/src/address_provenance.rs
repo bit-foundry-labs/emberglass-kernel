@@ -39,14 +39,14 @@ impl AddressProvenance {
         executable_virtual_base: u64,
     ) -> Result<Self, ProvenanceError> {
         if hhdm_offset < HIGHER_HALF_START
-            || hhdm_offset % PAGE_BYTES != 0
+            || !hhdm_offset.is_multiple_of(PAGE_BYTES)
             || !is_canonical_48(hhdm_offset)
         {
             return Err(ProvenanceError::InvalidDirectMapOffset);
         }
-        if executable_physical_base % PAGE_BYTES != 0
+        if !executable_physical_base.is_multiple_of(PAGE_BYTES)
             || executable_virtual_base < EXECUTABLE_MIN_VIRTUAL
-            || executable_virtual_base % PAGE_BYTES != 0
+            || !executable_virtual_base.is_multiple_of(PAGE_BYTES)
             || !is_canonical_48(executable_virtual_base)
         {
             return Err(ProvenanceError::InvalidExecutableBase);
@@ -62,7 +62,7 @@ impl AddressProvenance {
     /// The caller must independently prove the frame belongs to a mapped
     /// Limine memory-map type; this method never dereferences the address.
     pub fn hhdm_candidate(&self, physical_frame: u64) -> Result<u64, ProvenanceError> {
-        if physical_frame % PAGE_BYTES != 0 {
+        if !physical_frame.is_multiple_of(PAGE_BYTES) {
             return Err(ProvenanceError::UnalignedFrame);
         }
         let address = self
