@@ -1,5 +1,6 @@
 //! Bounded translation of Limine's memory map into pure-Rust frame bookkeeping.
 //! This trusts the bootloader's pointers until Embers owns page tables.
+use crate::boot_pool_gate::BootPoolGate;
 use crate::memory::{
     choose_pool, FramePool, MapError, Region, MAX_BOOT_REGIONS, REQUIRED_BOOT_PAGES,
 };
@@ -42,15 +43,21 @@ static mut MEMORY_MAP_REQUEST: LimineMemoryMapRequest = LimineMemoryMapRequest {
 
 #[derive(Debug)]
 pub enum BootMapError {
+    AlreadyIssued,
     NoResponse,
     InvalidCount,
     MissingEntry,
     InvalidMap(MapError),
 }
 
+static INITIAL_POOL_GATE: BootPoolGate = BootPoolGate::new();
+
 /// Select a usable physical span. Does not write frames, change CR3,
 /// validate DMA, or acquire hardware-enforced ownership.
 pub fn initial_frame_pool() -> Result<FramePool, BootMapError> {
+    INITIAL_POOL_GATE
+        .try_issue()
+        .map_err(|_| BootMapError::AlreadyIssued)?;
     // SAFETY: During the BSP-only handoff, Limine is the sole writer of
     // response before entry and never mutates it after transfer of control.
     let response = unsafe { read_volatile(addr_of!(MEMORY_MAP_REQUEST.response)) };
