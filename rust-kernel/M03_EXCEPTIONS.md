@@ -34,6 +34,12 @@ For each negative test, recompile an ISO with the requested Cargo feature:
     make rust-iso RUST_FEATURES="--features fault-pf"
     make rust-iso RUST_FEATURES="--features fault-df"
 
+The three `fault-*` Cargo features are **mutually exclusive**. Any pair
+or all three enabled simultaneously causes an intentional compile-time error.
+The exception CI runs negative `cargo check` tests for all four invalid
+combinations and verifies the expected diagnostic. Do not treat a failed
+build for an unrelated compiler error as a passing negative test.
+
 Run QEMU after each build using the command in the parent Rust README. Expected
 serial markers: FAULT: #UD, FAULT: #PF, and FAULT: #DF respectively, including
 a saved RIP. The page fault also reports CR2. Restore normal build with
