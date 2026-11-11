@@ -47,3 +47,10 @@ rust-serial-test:
 	mkdir -p build
 	rustc --edition=2021 --test rust-kernel/src/serial.rs -o build/embers-serial-host-tests
 	./build/embers-serial-host-tests
+
+# Pure host validation of CR0/CR4 bits; privileged sampling is QEMU-only.
+.PHONY: rust-paging-mode-test
+rust-paging-mode-test:
+	mkdir -p build
+	cd rust-kernel && rustc --edition=2021 --test tests/paging_mode_host.rs -o ../build/embers-paging-mode-tests
+	./build/embers-paging-mode-tests
