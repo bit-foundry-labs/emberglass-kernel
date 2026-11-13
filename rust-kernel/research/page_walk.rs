@@ -42,6 +42,11 @@ impl Hierarchy {
         user: bool,
     ) -> Result<u64, WalkError> {
         let index = indices(virtual_address)?;
+        for (level, address) in self.table_addresses.iter().enumerate() {
+            if address & 0xfff != 0 || self.table_addresses[..level].contains(address) {
+                return Err(WalkError::InvalidTableAddress);
+            }
+        }
         let mut can_write = true;
         let mut can_user = true;
         for (level, slot) in index.iter().copied().enumerate() {
@@ -131,6 +136,23 @@ mod tests {
         assert_eq!(
             h.translate(va, false, false),
             Err(WalkError::InvalidLeafAddress)
+        );
+    }
+
+    #[test]
+    fn rejects_aliased_or_unaligned_table_frames() {
+        let va = 0x1234_5678_9abcu64;
+        let mut h = hierarchy(va);
+        h.table_addresses[0] = h.table_addresses[2];
+        assert_eq!(
+            h.translate(va, false, false),
+            Err(WalkError::InvalidTableAddress)
+        );
+        h = hierarchy(va);
+        h.table_addresses[0] = 0x1001;
+        assert_eq!(
+            h.translate(va, false, false),
+            Err(WalkError::InvalidTableAddress)
         );
     }
 
