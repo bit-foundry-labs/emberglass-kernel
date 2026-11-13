@@ -197,7 +197,6 @@ mod tests {
         assert_eq!(b.reclaim(), Err(Error::NotQuiescent));
     }
 
-
     #[test]
     fn bounded_event_sequences_never_reuse_with_outstanding_access() {
         // Enumerate all 7^6 event sequences, including rejected actions.
