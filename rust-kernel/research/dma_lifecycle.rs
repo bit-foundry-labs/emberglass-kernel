@@ -197,6 +197,57 @@ mod tests {
         assert_eq!(b.reclaim(), Err(Error::NotQuiescent));
     }
 
+
+    #[test]
+    fn bounded_event_sequences_never_reuse_with_outstanding_access() {
+        // Enumerate all 7^6 event sequences, including rejected actions.
+        let mut reached_reusable = false;
+        let mut reached_quarantine = false;
+        for mut sequence in 0..7usize.pow(6) {
+            let mut b = Buffer::new();
+            let mut ticket = None;
+            for _ in 0..6 {
+                match sequence % 7 {
+                    0 => {
+                        if let Ok(t) = b.submit() {
+                            ticket = Some(t);
+                        }
+                    }
+                    1 => {
+                        let _ = b.revoke();
+                    }
+                    2 => {
+                        if let Some(t) = ticket {
+                            let _ = b.complete(t);
+                        }
+                    }
+                    3 => {
+                        let _ = b.sync_for_cpu();
+                    }
+                    4 => {
+                        let _ = b.reclaim();
+                    }
+                    5 => {
+                        let _ = b.reissue();
+                    }
+                    _ => {
+                        let _ = b.quarantine();
+                    }
+                }
+                sequence /= 7;
+                if b.state == State::Reusable {
+                    reached_reusable = true;
+                    assert!(!b.device_may_access);
+                    assert!(b.inflight.is_none());
+                    assert!(b.synced_for_cpu);
+                }
+                reached_quarantine |= b.state == State::Quarantined;
+            }
+        }
+        assert!(reached_reusable);
+        assert!(reached_quarantine);
+    }
+
     #[test]
     fn generation_exhaustion_fails_closed() {
         let mut b = Buffer::new();
