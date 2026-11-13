@@ -169,6 +169,18 @@ mod tests {
         assert_eq!(h.translate(va, false, true), Err(WalkError::UserDenied));
     }
     #[test]
+    fn write_requires_writable_permission_at_every_level() {
+        let va = 0x1234_5678_9abcu64;
+        let ix = indices(va).unwrap();
+        for (level, slot) in ix.iter().copied().enumerate() {
+            let mut h = hierarchy(va);
+            h.tables[level][slot].writable = false;
+            assert_eq!(h.translate(va, true, false), Err(WalkError::WriteDenied));
+            assert_eq!(h.translate(va, false, false), Ok(0x9abc));
+        }
+    }
+
+    #[test]
     fn every_level_must_be_present_and_permit_user_access() {
         let va = 0x1234_5678_9abcu64;
         let ix = indices(va).unwrap();
