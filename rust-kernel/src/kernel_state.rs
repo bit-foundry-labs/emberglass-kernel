@@ -42,8 +42,8 @@ mod tests {
         KernelState::new(TransactionalFrameAllocator::with_boot_reservation(pool).unwrap())
     }
 
-    // Documents a current gap: independent pool construction bypasses the
-    // boot gate. This is not an acceptable source of page-table authority.
+    // The unrestricted selector is test-only. Synthetic pools can overlap;
+    // such a pool must never be treated as physical page-table authority.
     #[test]
     fn independently_constructed_pools_can_issue_the_same_frame() {
         let first = initialize().reservation(0).unwrap();
