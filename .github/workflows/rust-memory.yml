@@ -31,8 +31,7 @@ jobs:
           make rust-provenance-test
           make rust-boot-pool-gate-test
           make rust-frame-registry-test
-          rustc --edition=2021 --test rust-kernel/research/page_entry.rs -o /tmp/embers-page-entry-tests
-          /tmp/embers-page-entry-tests
+          make rust-paging-research-test
       - name: Install QEMU and ISO prerequisites
         shell: bash
         run: |
