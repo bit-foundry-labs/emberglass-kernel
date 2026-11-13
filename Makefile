@@ -73,7 +73,7 @@ rust-frame-registry-test:
 .PHONY: rust-paging-research-test
 rust-paging-research-test:
 	mkdir -p build
-	rustc --edition=2021 --test rust-kernel/research/page_entry.rs -o build/embers-page-entry-tests
+	cd rust-kernel && rustc --edition=2021 --test research/page_entry.rs -o ../build/embers-page-entry-tests
 	./build/embers-page-entry-tests
-	rustc --edition=2021 --test rust-kernel/research/page_walk.rs -o build/embers-page-walk-tests
+	cd rust-kernel && rustc --edition=2021 --test research/page_walk.rs -o ../build/embers-page-walk-tests
 	./build/embers-page-walk-tests
