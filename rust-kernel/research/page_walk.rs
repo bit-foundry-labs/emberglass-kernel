@@ -1,4 +1,6 @@
 //! Host-only, single-path four-level translation model. No hardware mappings.
+//! Supervisor writes follow a restrictive CR0.WP-enabled assumption; this
+//! model does not read control registers or cover all x86 permission rules.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Entry {
