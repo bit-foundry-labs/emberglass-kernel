@@ -3,3 +3,5 @@
 mod frame_registry;
 #[path = "../src/memory.rs"]
 mod memory;
+#[path = "../src/kernel_state.rs"]
+mod kernel_state;
