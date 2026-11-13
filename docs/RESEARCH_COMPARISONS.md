@@ -65,3 +65,31 @@ graphs are user-space responsibilities. A future system built on Embers may
 request narrowly scoped memory, IPC, device, or timing resources; Embers does
 not provide a context graph or desktop services. Emberglass OS is an independent
 Linux-based project, not an existing Embers desktop implementation.
+
+## Ownership transfer and accelerator isolation
+
+[Xous memory lending](https://xous.dev/kernel/) describes page-aligned
+send/lend/mutable-lend operations. Foundation identifies Palladium as a
+modified Xous derivative in [KeyOS](https://github.com/Foundation-Devices/KeyOS).
+The exact Palladium mapping transition requires code-level verification; do not
+assume it has been verified here.
+
+Candidate future invariant: before a recipient obtains exclusive mutable access,
+all conflicting sender mappings and aliases must be revoked and relevant
+CPU translations invalidated. Copies, other processes, shared mappings, device
+DMA, in-flight commands, cache synchronization, crashes, cancellation, and
+return/revocation need explicit treatment. A CPU MMU alone cannot control DMA.
+No such lending protocol exists in Embers.
+
+[coconutOS](https://github.com/coconut-os/coconutOS) reports a capability-based
+GPU isolation design; its README says GPU compute currently uses QEMU emulation
+and CPU simulation. Treat its claims as project-reported evidence, not proof on
+physical accelerators. GPU page tables, device firmware, queue access, IOMMU
+configuration, topology, cleanup, and side channels require independent review.
+
+A learned scheduler may recommend bounded actions, but it does not acquire
+authority or execute kernel commands unchecked. Admission, accounting,
+revocation, and fallback remain enforced by deterministic kernel mechanisms.
+Deterministic validation does not make an adaptive system's behavior
+deterministic. Compare adaptive and non-adaptive policies under identical
+workloads, and measure failure, fairness, and overhead as well as speed.
