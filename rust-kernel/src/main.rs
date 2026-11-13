@@ -231,6 +231,15 @@ fn check_boot_memory() -> frame_registry::TransactionalFrameAllocator<16> {
             halt_forever()
         }
     };
+    // Exercise the actual boot issuance path before handing the pool onward.
+    // This gate does not prevent independently constructed pools.
+    if !matches!(
+        boot_memory::initial_frame_pool(),
+        Err(boot_memory::BootMapError::AlreadyIssued)
+    ) {
+        serial_write("ERROR: second boot frame pool issuance was not rejected\n");
+        halt_forever();
+    }
     // The initialized allocator is returned to the boot owner below.
     #[allow(unused_mut)] // Mutable only when the optional ownership smoke test is enabled.
     let mut allocator =
