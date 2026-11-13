@@ -1,13 +1,16 @@
 # M06e: BSP transactional frame reservations
 
-`main.rs` now uses one resident `TransactionalFrameAllocator<N>` that owns both:
+`check_boot_memory` initializes a `TransactionalFrameAllocator<N>` that owns both:
 
 - the monotonic `FramePool` selected from Limine's validated map, and
 - a fixed-capacity `FrameRegistry<N>` for reservation records.
 
 The first normal boot diagnostic request reserves two pages through this path.
 The reservation is written to the registry exactly once, and the same path
-feeds optional M05 ownership smoke by lending the allocator's pool.
+feeds optional M05 ownership smoke by lending the allocator's pool. The allocator
+is returned to `kernel_entry`, which checks that the initial record is present.
+The kernel then halts; future runtime code must explicitly carry this owner forward.
+This is not a global allocator or a hardware ownership guarantee.
 
 ## Failure atomicity contract
 
