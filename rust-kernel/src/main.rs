@@ -231,7 +231,7 @@ fn check_boot_memory() -> frame_registry::TransactionalFrameAllocator<16> {
         }
     };
     // Exercise the actual boot issuance path before handing the pool onward.
-    // This gate does not prevent independently constructed pools.
+    // This software gate does not establish hardware frame ownership.
     if !matches!(
         boot_memory::initial_frame_pool(),
         Err(boot_memory::BootMapError::AlreadyIssued)
