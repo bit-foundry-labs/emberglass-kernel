@@ -119,9 +119,43 @@ fn page_align_up(address: u64) -> Option<u64> {
         .map(|value| value & !(PAGE_BYTES - 1))
 }
 
+// One production permit for this kernel image. Consuming it is irreversible,
+// including when memory-map validation later fails.
+static BOOT_POOL_ISSUED: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BootPoolPermit {
+    _private: (),
+}
+
+pub fn claim_boot_pool_permit() -> Option<BootPoolPermit> {
+    use core::sync::atomic::Ordering;
+    BOOT_POOL_ISSUED
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .ok()
+        .map(|_| BootPoolPermit { _private: () })
+}
+
+/// The permit is consumed even when validation fails. This only controls pool
+/// construction through this module; it does not establish hardware ownership.
+pub fn select_boot_pool(
+    _permit: BootPoolPermit,
+    regions: &[Region],
+    min_pages: u64,
+) -> Result<FramePool, MapError> {
+    select_pool(regions, min_pages)
+}
+
+// Pure selector exposed to host tests only; it does not represent authority.
+#[cfg(test)]
+pub fn choose_pool(regions: &[Region], min_pages: u64) -> Result<FramePool, MapError> {
+    select_pool(regions, min_pages)
+}
+
 /// Check the entire boot memory map, including reserved regions, before any
 /// claim. Fail closed on overlap or overflow rather than repairing ambiguity.
-pub fn choose_pool(regions: &[Region], min_pages: u64) -> Result<FramePool, MapError> {
+fn select_pool(regions: &[Region], min_pages: u64) -> Result<FramePool, MapError> {
     if regions.is_empty() {
         return Err(MapError::EmptyMap);
     }
@@ -173,6 +207,13 @@ mod tests {
 
     fn region(base: u64, length: u64, kind: u64) -> Region {
         Region { base, length, kind }
+    }
+
+    #[test]
+    fn failed_selection_still_consumes_the_single_boot_permit() {
+        let permit = claim_boot_pool_permit().unwrap();
+        assert_eq!(select_boot_pool(permit, &[], 1), Err(MapError::EmptyMap));
+        assert_eq!(claim_boot_pool_permit(), None);
     }
 
     #[test]
