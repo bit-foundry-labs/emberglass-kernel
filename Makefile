@@ -26,6 +26,7 @@ rust-memory-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test src/memory.rs -o ../build/embers-memory-host-tests
 	./build/embers-memory-host-tests
+	python3 scripts/check_pool_construction.py
 
 # Host-only ownership-ledger tests using the pure no_std Rust modules.
 .PHONY: rust-ledger-test
