@@ -44,8 +44,8 @@ impl Hierarchy {
         let index = indices(virtual_address)?;
         let mut can_write = true;
         let mut can_user = true;
-        for level in 0..4 {
-            let entry = self.tables[level][index[level]];
+        for (level, slot) in index.iter().copied().enumerate() {
+            let entry = self.tables[level][slot];
             if !entry.present {
                 return Err(WalkError::MissingEntry);
             }
@@ -89,8 +89,8 @@ mod tests {
             tables: [[EMPTY; 512]; 4],
         };
         let ix = indices(va).unwrap();
-        for level in 0..4 {
-            h.tables[level][ix[level]] = Entry {
+        for (level, slot) in ix.iter().copied().enumerate() {
+            h.tables[level][slot] = Entry {
                 target: if level == 3 {
                     0x9000
                 } else {
