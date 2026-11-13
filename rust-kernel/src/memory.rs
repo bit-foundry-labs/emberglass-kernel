@@ -210,8 +210,18 @@ mod tests {
     }
 
     #[test]
-    fn failed_selection_still_consumes_the_single_boot_permit() {
-        let permit = claim_boot_pool_permit().unwrap();
+    fn concurrent_claims_have_one_winner_and_failure_consumes_permit() {
+        use std::thread;
+
+        let threads: Vec<_> = (0..8)
+            .map(|_| thread::spawn(claim_boot_pool_permit))
+            .collect();
+        let mut permits: Vec<_> = threads
+            .into_iter()
+            .filter_map(|thread| thread.join().unwrap())
+            .collect();
+        assert_eq!(permits.len(), 1);
+        let permit = permits.pop().unwrap();
         assert_eq!(select_boot_pool(permit, &[], 1), Err(MapError::EmptyMap));
         assert_eq!(claim_boot_pool_permit(), None);
     }
