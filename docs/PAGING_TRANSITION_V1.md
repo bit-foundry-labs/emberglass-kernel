@@ -13,9 +13,9 @@ Not in scope: ring-3 execution, syscalls, IPC, process isolation, SMP, TLB shoot
 ## Known baseline and gaps
 
 - Limine currently supplies long mode, the initial `CR3` mappings, the executing stack, and response structures. The kernel installs GDT/TSS/IDT, including a kernel-owned 16 KiB double-fault IST stack. The entry stack is still bootloader-provided.
-- `boot_memory::initial_frame_pool` bounds and copies memory-map *values* from trusted Limine pointers, then `memory::FramePool` monotonically hands out physical **numbers** from one selected span. It neither maps nor clears frames, and is not yet a persistent allocator.
+- `boot_memory::initial_frame_pool` copies bounded memory-map values and issues a monotonic pool of physical numbers. The transactional allocator and registry return to `kernel_entry` and the first record is checked there. The kernel then halts: there is no runtime-wide allocator, mapping, clearing, or globally enforced physical ownership.
 - `frame_ledger::FrameLedger` is only used in an optional boot ownership smoke test; it does not enforce exclusive physical-frame access. Its identity is not globally unique across independently overlapping frame pools.
-- There is currently no kernel request or implementation that safely exposes the Limine higher-half direct-map (HHDM) offset or executable's physical base to a new table builder. **Do not assume an identity mapping, fixed HHDM offset, or `physical == virtual`.** Limine base revision 6 inherits the base revision 3+ mapping restrictions.
+- Boot metadata preflight now reads and validates Limine HHDM and executable-base responses and calculates candidate addresses. It does not prove that arbitrary physical frames are mapped or writable. **Do not assume identity mapping, a fixed HHDM offset, or `physical == virtual`.**
 - Current exception stubs are fatal and nonreturning. They must not be repurposed as resumable page-fault recovery or ring-3 trap entry.
 
 ## Mapping survival contract
