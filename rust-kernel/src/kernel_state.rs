@@ -15,7 +15,11 @@ impl<const N: usize> KernelState<N> {
     }
 
     #[allow(dead_code)]
-    pub fn reserve(&mut self, pages: u64, owner: u32) -> Result<FrameReservation, TransactionError> {
+    pub fn reserve(
+        &mut self,
+        pages: u64,
+        owner: u32,
+    ) -> Result<FrameReservation, TransactionError> {
         self.frames.reserve(pages, owner)
     }
 }
