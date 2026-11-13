@@ -16,9 +16,17 @@ permissions:
   contents: read
 
 jobs:
-  rust-boot:
+  boot-matrix:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile_name: control-max
+            cpu_model: max
+          - profile_name: baseline-qemu64
+            cpu_model: qemu64
     steps:
       - uses: actions/checkout@v4
       - name: Confirm pinned Rust toolchain
@@ -50,30 +58,31 @@ jobs:
         shell: bash
         run: |
           set +e
+          echo "QEMU CPU model: ${{ matrix.cpu_model }}"
           timeout --signal=TERM --kill-after=2s 20s \
-            qemu-system-x86_64 -cpu max -m 256M \
+            qemu-system-x86_64 -cpu "${{ matrix.cpu_model }}" -m 256M \
               -cdrom build/embers-rust.iso -display none \
-              -d int,guest_errors -D build/embers-rust-debug.log \
-              -serial file:build/embers-rust-serial.log \
+              -d int,guest_errors -D "build/embers-rust-debug-${{ matrix.profile_name }}.log" \
+              -serial "file:build/embers-rust-serial-${{ matrix.profile_name }}.log" \
               -monitor none -no-reboot -no-shutdown
           status=$?
           set -e
           echo "QEMU exit status: $status"
-          if [[ -f build/embers-rust-serial.log ]]; then
-            cat build/embers-rust-serial.log
+          if [[ -f "build/embers-rust-serial-${{ matrix.profile_name }}.log" ]]; then
+            cat "build/embers-rust-serial-${{ matrix.profile_name }}.log"
           fi
           if [[ "$status" -ne 124 && "$status" -ne 0 ]]; then
             echo "QEMU execution failed" >&2
             exit 1
           fi
-          if grep -Fq "ERROR:" build/embers-rust-serial.log; then
+          if grep -Fq "ERROR:" "build/embers-rust-serial-${{ matrix.profile_name }}.log"; then
             echo "Rust kernel reported error" >&2
             exit 1
           fi
-          grep -Fq "READY: Embers Rust no_std entry reached." build/embers-rust-serial.log
-          grep -Fq "ADDRESS: Limine HHDM and executable bases validated" build/embers-rust-serial.log
-          grep -Fq "PAGING: active four-level mode validated" build/embers-rust-serial.log
-          if grep -Fq "OWNERSHIP:" build/embers-rust-serial.log; then
+          grep -Fq "READY: Embers Rust no_std entry reached." "build/embers-rust-serial-${{ matrix.profile_name }}.log"
+          grep -Fq "ADDRESS: Limine HHDM and executable bases validated" "build/embers-rust-serial-${{ matrix.profile_name }}.log"
+          grep -Fq "PAGING: active four-level mode validated" "build/embers-rust-serial-${{ matrix.profile_name }}.log"
+          if grep -Fq "OWNERSHIP:" "build/embers-rust-serial-${{ matrix.profile_name }}.log"; then
             echo "Normal boot unexpectedly ran the optional ownership smoke test" >&2
             exit 1
           fi
@@ -81,8 +90,20 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: embers-rust-boot-logs
+          name: embers-rust-boot-logs-${{ matrix.profile_name }}
           path: |
-            build/embers-rust-serial.log
-            build/embers-rust-debug.log
+            build/embers-rust-serial-${{ matrix.profile_name }}.log
+            build/embers-rust-debug-${{ matrix.profile_name }}.log
           if-no-files-found: ignore
+
+  # Preserve the required status name while requiring every matrix lane.
+  rust-boot:
+    needs: boot-matrix
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all QEMU profiles to pass
+        env:
+          MATRIX_RESULT: ${{ needs.boot-matrix.result }}
+        run: test "$MATRIX_RESULT" = success

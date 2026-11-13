@@ -56,7 +56,7 @@ qemu-system-x86_64 -cpu max -m 256M -cdrom build/embers-rust.iso \
   -display none -serial stdio -monitor none -no-reboot
 ```
 
-The serial log should contain `READY: Embers Rust no_std entry reached.`. The intentionally halted kernel keeps QEMU running; stop the emulator with Ctrl+C. `-cpu max` is only the verified emulator profile, not a minimum hardware requirement. Both CI evidence and unsafe assumptions are described in [the Rust boot notes](rust-kernel/README.md).
+The serial log should contain `READY: Embers Rust no_std entry reached.`. The intentionally halted kernel keeps QEMU running; stop the emulator with Ctrl+C. The measured emulator baseline is documented in [the Rust boot notes](rust-kernel/README.md): `-cpu max` is retained as a control profile and `qemu64` is the current minimum **tested emulator** model. This is not a minimum hardware requirement.
 
 Run the pure-Rust memory and ownership tests independently of QEMU:
 
