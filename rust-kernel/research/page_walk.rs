@@ -158,5 +158,4 @@ mod tests {
             assert_eq!(h.translate(va, false, true), Err(WalkError::UserDenied));
         }
     }
-
 }
