@@ -45,3 +45,23 @@ requires a separate threat model and proof scope.
 References: [XSched](https://www.usenix.org/conference/osdi25/presentation/shen-weihang),
 [InfiniGen](https://www.usenix.org/conference/osdi24/presentation/lee),
 [NVIDIA GPUDirect RDMA](https://docs.nvidia.com/cuda/gpudirect-rdma/).
+
+## Desktop workload hypotheses
+
+A future desktop workload may combine interactive rendering, audio, and
+background model inference. Evaluate missed audio deadlines, frame-time
+percentiles, input latency, model throughput, time to first token, and energy
+against deterministic scheduling baselines. Sub-millisecond preemption, hard
+real-time behavior, wattage targets, and uninterrupted accelerator execution
+are not guarantees; devices and drivers have different preemption behavior.
+
+Research read-only model-weight sharing with per-process private state, explicit
+capabilities, and revocation. Shared addressability does not prove zero-copy or
+prevent leakage through logs, caches, devices, or outputs. Any peer-to-peer
+storage or networking path requires topology and security validation.
+
+Semantic context indexing, model runtimes, display compositing, and audio
+graphs are user-space responsibilities. A future system built on Embers may
+request narrowly scoped memory, IPC, device, or timing resources; Embers does
+not provide a context graph or desktop services. Emberglass OS is an independent
+Linux-based project, not an existing Embers desktop implementation.
