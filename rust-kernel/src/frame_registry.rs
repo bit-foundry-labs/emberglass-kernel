@@ -275,7 +275,10 @@ mod tests {
 
         let mut allocator = initialize();
         let initial = allocator.reservation(0).unwrap();
-        assert_eq!((initial.start, initial.pages, initial.owner), (0x100000, 2, 1));
+        assert_eq!(
+            (initial.start, initial.pages, initial.owner),
+            (0x100000, 2, 1)
+        );
         let next = allocator.reserve(1, 2).unwrap();
         assert_eq!(next.start, initial.start + 2 * PAGE_BYTES);
         assert_eq!(allocator.reservation(0), Some(initial));
