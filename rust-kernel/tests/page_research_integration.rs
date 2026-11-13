@@ -6,7 +6,7 @@ mod page_entry;
 #[path = "../research/page_walk.rs"]
 mod page_walk;
 
-use page_entry::supervisor_leaf;
+use page_entry::{supervisor_leaf, LeafTable};
 use page_walk::{indices, Entry, Hierarchy, WalkError};
 
 const EMPTY: Entry = Entry {
@@ -39,7 +39,11 @@ fn encoded_supervisor_leaf_drives_translation_and_permissions() {
     let va = 0x1234_5678_9abcu64;
     let address = 0x1234_5000u64;
     for writable in [false, true] {
-        let encoded = supervisor_leaf(address, 36, writable).unwrap();
+        let slot = indices(va).unwrap()[3];
+        let mut table = LeafTable::new();
+        table.insert(slot, address, 36, writable).unwrap();
+        let encoded = table.entry(slot).unwrap();
+        assert_eq!(encoded, supervisor_leaf(address, 36, writable).unwrap());
         // The encoder supports only present, writable, and physical-address bits.
         assert_eq!(encoded & 0xffc, 0);
         let leaf = Entry {
