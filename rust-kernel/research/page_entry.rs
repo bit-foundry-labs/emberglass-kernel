@@ -39,16 +39,31 @@ mod tests {
 
     #[test]
     fn rejects_unaligned_and_out_of_width_addresses() {
-        assert_eq!(supervisor_leaf(0x1001, 36, true), Err(EntryError::UnalignedAddress));
-        assert_eq!(supervisor_leaf(1 << 36, 36, false), Err(EntryError::AddressOutOfRange));
-        assert_eq!(supervisor_leaf((1 << 36) - 4096, 36, false), Ok((1 << 36) - 4096 + 1));
-        assert_eq!(supervisor_leaf(1 << 52, 52, false), Err(EntryError::AddressOutOfRange));
+        assert_eq!(
+            supervisor_leaf(0x1001, 36, true),
+            Err(EntryError::UnalignedAddress)
+        );
+        assert_eq!(
+            supervisor_leaf(1 << 36, 36, false),
+            Err(EntryError::AddressOutOfRange)
+        );
+        assert_eq!(
+            supervisor_leaf((1 << 36) - 4096, 36, false),
+            Ok((1 << 36) - 4096 + 1)
+        );
+        assert_eq!(
+            supervisor_leaf(1 << 52, 52, false),
+            Err(EntryError::AddressOutOfRange)
+        );
     }
 
     #[test]
     fn rejects_invalid_widths() {
         for width in [0, 11, 53, 255] {
-            assert_eq!(supervisor_leaf(0, width, false), Err(EntryError::InvalidPhysicalWidth));
+            assert_eq!(
+                supervisor_leaf(0, width, false),
+                Err(EntryError::InvalidPhysicalWidth)
+            );
         }
     }
 }
