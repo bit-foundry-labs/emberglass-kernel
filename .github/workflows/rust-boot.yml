@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  rust-boot:
+  boot-matrix:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
@@ -95,3 +95,15 @@ jobs:
             build/embers-rust-serial-${{ matrix.profile_name }}.log
             build/embers-rust-debug-${{ matrix.profile_name }}.log
           if-no-files-found: ignore
+
+  # Preserve the required status name while requiring every matrix lane.
+  rust-boot:
+    needs: boot-matrix
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all QEMU profiles to pass
+        env:
+          MATRIX_RESULT: ${{ needs.boot-matrix.result }}
+        run: test "$MATRIX_RESULT" = success
