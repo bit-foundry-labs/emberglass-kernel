@@ -153,7 +153,12 @@ pub extern "C" fn kernel_entry() -> ! {
             halt_forever()
         }
     }
-    check_boot_memory();
+    let allocator = check_boot_memory();
+    if allocator.reservation(0).is_none() {
+        serial_write("ERROR: boot reservation missing after initialization\n");
+        halt_forever();
+    }
+    serial_write("MEMORY: boot reservation retained after initialization\n");
 
     #[cfg(feature = "fault-ud")]
     {
@@ -187,7 +192,7 @@ pub extern "C" fn kernel_entry() -> ! {
     halt_forever()
 }
 
-fn check_boot_memory() {
+fn check_boot_memory() -> frame_registry::TransactionalFrameAllocator<16> {
     let pool = match boot_memory::initial_frame_pool() {
         Ok(pool) => pool,
         Err(boot_memory::BootMapError::AlreadyIssued) => {
@@ -221,16 +226,17 @@ fn check_boot_memory() {
             halt_forever()
         }
     };
-    let mut allocator = frame_registry::TransactionalFrameAllocator::<16>::new(pool);
-
-    // Reserve both diagnostic frames in one bounded operation. This is only
-    // physical-address bookkeeping; neither page is mapped or zeroed here.
-    let initial = match allocator.reserve(2, 1) {
-        Ok(reservation) => reservation,
+    // The initialized allocator is returned to the boot owner below.
+    let mut allocator = match frame_registry::TransactionalFrameAllocator::<16>::with_boot_reservation(pool) {
+        Ok(allocator) => allocator,
         Err(_) => {
             serial_write("ERROR: initial frame reservation failed\n");
             halt_forever()
         }
+    };
+    let Some(initial) = allocator.reservation(0) else {
+        serial_write("ERROR: initial reservation missing\n");
+        halt_forever()
     };
     let Some(second) = initial.start.checked_add(memory::PAGE_BYTES) else {
         serial_write("ERROR: initial reservation invariant failed\n");
@@ -295,6 +301,8 @@ fn check_boot_memory() {
     // The normal boot checks frame accounting without running test scenarios.
     #[cfg(feature = "boot-ownership-smoke")]
     run_ownership_smoke(allocator.pool_mut());
+
+    allocator
 }
 
 #[cfg(feature = "boot-ownership-smoke")]
