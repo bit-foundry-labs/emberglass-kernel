@@ -54,12 +54,15 @@ impl LeafTable {
         physical_bits: u8,
         writable: bool,
     ) -> Result<(), TableError> {
-        let slot = self.entries.get_mut(index).ok_or(TableError::IndexOutOfRange)?;
+        let slot = self
+            .entries
+            .get_mut(index)
+            .ok_or(TableError::IndexOutOfRange)?;
         if *slot != 0 {
             return Err(TableError::Occupied);
         }
-        let entry = supervisor_leaf(address, physical_bits, writable)
-            .map_err(TableError::InvalidEntry)?;
+        let entry =
+            supervisor_leaf(address, physical_bits, writable).map_err(TableError::InvalidEntry)?;
         *slot = entry;
         Ok(())
     }
@@ -107,7 +110,10 @@ mod tests {
         let mut table = LeafTable::new();
         assert_eq!(table.insert(0, 0x1000, 36, false), Ok(()));
         assert_eq!(table.insert(511, 0x2000, 36, true), Ok(()));
-        assert_eq!(table.insert(0, 0x3000, 36, false), Err(TableError::Occupied));
+        assert_eq!(
+            table.insert(0, 0x3000, 36, false),
+            Err(TableError::Occupied)
+        );
         assert_eq!(
             table.insert(512, 0x3000, 36, false),
             Err(TableError::IndexOutOfRange)
