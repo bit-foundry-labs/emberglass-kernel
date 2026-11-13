@@ -227,13 +227,15 @@ fn check_boot_memory() -> frame_registry::TransactionalFrameAllocator<16> {
         }
     };
     // The initialized allocator is returned to the boot owner below.
-    let mut allocator = match frame_registry::TransactionalFrameAllocator::<16>::with_boot_reservation(pool) {
-        Ok(allocator) => allocator,
-        Err(_) => {
-            serial_write("ERROR: initial frame reservation failed\n");
-            halt_forever()
-        }
-    };
+    #[allow(unused_mut)] // Mutable only when the optional ownership smoke test is enabled.
+    let mut allocator =
+        match frame_registry::TransactionalFrameAllocator::<16>::with_boot_reservation(pool) {
+            Ok(allocator) => allocator,
+            Err(_) => {
+                serial_write("ERROR: initial frame reservation failed\n");
+                halt_forever()
+            }
+        };
     let Some(initial) = allocator.reservation(0) else {
         serial_write("ERROR: initial reservation missing\n");
         halt_forever()
