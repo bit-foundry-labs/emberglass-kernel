@@ -70,7 +70,9 @@ The default branch **boots a freestanding Rust `no_std` kernel in headless QEMU*
 | M03: CPU exceptions | Kernel GDT/TSS/IDT; deliberate #UD, #PF and #DF QEMU tests | [#27](https://github.com/bit-foundry-labs/embers-kernel/pull/27) |
 | M04: memory map | Validate Limine descriptors; bounded, unique physical-frame accounting | [#28](https://github.com/bit-foundry-labs/embers-kernel/pull/28) |
 | M05: frame ledger | Fixed-capacity symbolic owners, cross-owner rejection and **permanent quarantine** | [#29](https://github.com/bit-foundry-labs/embers-kernel/pull/29) |
-| M06e: transactional reservations | One BSP boot path couples frame-pool and registry bookkeeping | [#53](https://github.com/bit-foundry-labs/embers-kernel/pull/53) |\n| Paging research | Host-only supervisor leaf-entry encoding; no active mapping change | [#54](https://github.com/bit-foundry-labs/embers-kernel/pull/54) |\n| Proposed research | Capability and AI-aware resource policy architecture | [ADR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), [policy model #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not kernel features |
+| M06e: transactional reservations | One BSP boot path couples frame-pool and registry bookkeeping | [#53](https://github.com/bit-foundry-labs/embers-kernel/pull/53) |
+| Paging research | Host-only supervisor leaf-entry encoding; no active mapping change | [#54](https://github.com/bit-foundry-labs/embers-kernel/pull/54) |
+| Proposed research | Capability and AI-aware resource policy architecture | [ADR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), [policy model #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not kernel features |
 
 **Not implemented:** kernel-owned page tables, hardware-enforced user/kernel isolation, ring-3 processes, syscalls, IPC, authenticated capability enforcement, DMA/IOMMU quiescence or a deterministic multitasking scheduler. Frame ledger owner IDs are internal demonstration labels, not secure process identities.
 
