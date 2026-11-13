@@ -18,7 +18,6 @@ mod address_provenance;
 mod arch;
 mod boot_addresses;
 mod boot_memory;
-mod boot_pool_gate;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
 mod frame_registry;
