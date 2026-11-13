@@ -127,6 +127,17 @@ impl<const N: usize> TransactionalFrameAllocator<N> {
         }
     }
 
+    /// Initialize the allocator with the boot diagnostic reservation.
+    pub fn with_boot_reservation(pool: FramePool) -> Result<Self, TransactionError> {
+        let mut allocator = Self::new(pool);
+        allocator.reserve(2, 1)?;
+        Ok(allocator)
+    }
+
+    pub fn reservation(&self, index: usize) -> Option<FrameReservation> {
+        self.registry.entry(index)
+    }
+
     /// Reserve contiguous pages and record ownership exactly once.
     /// Rejections leave both pool and registry unchanged.
     pub fn reserve(
@@ -254,6 +265,21 @@ mod tests {
         );
         assert_eq!(registry.count(), 1);
         assert_eq!(registry.entry(2), None);
+    }
+
+    #[test]
+    fn boot_reservation_survives_initialization_and_remains_disjoint() {
+        fn initialize() -> TransactionalFrameAllocator<2> {
+            TransactionalFrameAllocator::with_boot_reservation(pool(4)).unwrap()
+        }
+
+        let mut allocator = initialize();
+        let initial = allocator.reservation(0).unwrap();
+        assert_eq!((initial.start, initial.pages, initial.owner), (0x100000, 2, 1));
+        let next = allocator.reserve(1, 2).unwrap();
+        assert_eq!(next.start, initial.start + 2 * PAGE_BYTES);
+        assert_eq!(allocator.reservation(0), Some(initial));
+        assert_eq!(allocator.reservation(1), Some(next));
     }
 
     #[test]
