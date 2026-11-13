@@ -42,6 +42,7 @@ impl Hierarchy {
         user: bool,
     ) -> Result<u64, WalkError> {
         let index = indices(virtual_address)?;
+        // This single-path model excludes recursive or shared table frames.
         for (level, address) in self.table_addresses.iter().enumerate() {
             if address & 0xfff != 0 || self.table_addresses[..level].contains(address) {
                 return Err(WalkError::InvalidTableAddress);
