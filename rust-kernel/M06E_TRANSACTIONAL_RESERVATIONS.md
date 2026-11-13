@@ -13,6 +13,14 @@ is returned to `kernel_entry` and moved into `KernelState`, which is passed to
 halts; future execution must continue to retain and pass this state. This is not
 a global allocator, a synchronization contract, or hardware ownership.
 
+Production pool selection requires a non-copyable, one-shot permit owned by the
+memory module. The permit is consumed before boot-map parsing, including on
+failure; no retry is permitted. The unrestricted selector exists in test builds
+only, where independent pools deliberately demonstrate the old bypass. The
+standalone `boot_pool_gate` host tests do not exercise the production permit.
+This restricts safe construction in one kernel image, not arbitrary unsafe code,
+CPU or device mappings, or actual physical access.
+
 ## Failure atomicity contract
 
 `TransactionalFrameAllocator::reserve` stages both checks before insertion:
@@ -33,5 +41,6 @@ availability and registry count remain unchanged.
   independently from the boot allocator.
 - `FrameLedger` (M05 smoke feature) still allocates from a raw `FramePool`
   reference and does not consult registry records.
-- No global singleton authority exists across independently created pools or
-  registries, and no hardware-enforced isolation is claimed.
+- The permit limits safe production pool construction in this kernel image; it
+  does not make registries globally unique or prevent forged values or unsafe
+  physical access. There is no hardware-enforced isolation.
