@@ -20,6 +20,12 @@ define DMA mapping, CPU and I/O translation invalidation, device-specific
 fences, memory ordering, cache coherence, aliases, resets, and multiple
 concurrent operations before reclaiming physical frames.
 
+A host test enumerates all 7^6 six-event sequences for this single-operation
+model and checks that reusable state has no modeled outstanding access and is
+synchronized. Reachability checks ensure both reusable and quarantined states
+are exercised. This is bounded testing, not an exhaustive proof of other lengths,
+concurrency, or actual devices.
+
 The counterexample test demonstrates that revocation alone can coincide with
 possible device access. It is an ordinary executable test, not a model-checker
 counterexample. Kani harnesses and a reproducible bounded verification run
