@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile checks for the production frame-pool construction boundary."""
 from pathlib import Path
+import json
 import subprocess
 import tempfile
 
@@ -9,7 +10,7 @@ memory_path = root / "rust-kernel" / "src" / "memory.rs"
 
 with tempfile.TemporaryDirectory() as directory:
     temporary = Path(directory)
-    prefix = '#[path = ' + repr(str(memory_path)).replace("'", '"') + ']\nmod memory;\n'
+    prefix = '#[path = ' + json.dumps(str(memory_path)) + ']\nmod memory;\n'
     cases = [
         ("control", "fn main() { let _ = memory::claim_boot_pool_permit(); }", None),
         ("selector", "fn main() { let _ = memory::choose_pool(&[], 1); }", "E0425"),
