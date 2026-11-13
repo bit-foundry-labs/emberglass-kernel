@@ -42,6 +42,15 @@ mod tests {
         KernelState::new(TransactionalFrameAllocator::with_boot_reservation(pool).unwrap())
     }
 
+    // Documents a current gap: independent pool construction bypasses the
+    // boot gate. This is not an acceptable source of page-table authority.
+    #[test]
+    fn independently_constructed_pools_can_issue_the_same_frame() {
+        let first = initialize().reservation(0).unwrap();
+        let second = initialize().reservation(0).unwrap();
+        assert_eq!(first.start, second.start);
+    }
+
     #[test]
     fn moved_state_retains_boot_record_and_allocates_disjoint_next_run() {
         let mut state = initialize();
