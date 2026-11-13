@@ -2,23 +2,63 @@
 
 **An open-source, Rust-first microkernel research project for AI-oriented operating systems.**
 
-We're investigating what the kernel should control when applications and AI agents compete for CPU time, memory, and eventually accelerator resources. The aim is a small, predictable enforcement layer: capability-based authority, explicit resource budgets, isolation, and measurable performance.
+Embers explores how an operating system can give local AI workloads access to
+compute and memory while retaining explicit control over isolation, resource
+budgets, and recovery. We are especially interested in desktop systems, where
+interactive applications and model workloads compete for shared resources.
 
-**This is a research effort, not a working general-purpose operating system or a benchmark-proven AI-optimized kernel.**
+**This is early-stage research. Embers is not yet a protected microkernel, a
+general-purpose operating system, or a benchmark-proven AI-optimized kernel.**
 
 [Contribute](CONTRIBUTING.md) · [Research roadmap](docs/CONTRIBUTOR_ROADMAP.md) · [Open issues](https://github.com/bit-foundry-labs/embers-kernel/issues) · [Contributor launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24)
 
-## The engineering idea
+## Research focus
 
-**Keep enforcement deterministic; keep intelligence outside the trusted kernel.**
+Our central question is: **How can an AI operating system share memory and
+accelerator resources efficiently while preserving clear authority, safe
+revocation, and responsiveness?**
 
-- **Original microkernel:** target Rust `no_std`, x86-64 and reproducible QEMU experiments. This is not a Linux fork.
-- **Capabilities, not ambient privilege:** explicit authority for memory, processes, IPC, and eventual compute resources; test revocation and stale-handle behavior.
-- **AI-aware without AI in the kernel:** untrusted user-space services may propose scheduling or resource policies, but cannot grant themselves authority.
-- **Bounded resources and fair fallback:** investigate CPU budgets, admission, latency, starvation, and safe recovery before attempting accelerator integration.
-- **Evidence before claims:** compare proposed adaptations against deterministic baselines; measure IPC costs, tail latency, overhead, and failure behavior.
+We are investigating:
 
-Embers Kernel is **separate from Emberglass OS**, a Linux-based Rust operating-system environment. They explore related questions but do not share a working kernel.
+- **Memory and authority:** hardware-enforced address spaces, capability-based
+  access, and explicit rules for sharing or transferring memory between
+  isolated processes.
+- **Accelerator resources:** whether device queues, memory regions, and compute
+  budgets can become explicit, capability-controlled resources. Device-specific
+  DMA, IOMMU mappings, completion, and reset behavior need separate analysis.
+- **Revocation and recovery:** reject new work after revocation, track operations
+  already admitted, and reclaim memory only after safe quiescence. When device
+  access cannot be ruled out, quarantine is a candidate fail-safe.
+- **Desktop responsiveness:** evaluate interference between local inference and
+  interactive workloads, including frame times, input latency, audio deadlines,
+  memory bandwidth, and energy where measurable.
+- **Adaptive policy under kernel control:** explore isolated user-space services
+  that recommend resource decisions. Kernel mechanisms must validate authority
+  and limits, and provide a model-independent fallback.
+- **Verification and evidence:** define invariants, exercise negative paths,
+  model concurrency, and compare adaptive approaches with reproducible
+  deterministic baselines. Host models and QEMU tests have different proof
+  scopes; neither alone establishes real-device isolation.
+
+These are research directions, not implemented guarantees. Tensor formats,
+model runtimes, drivers, and desktop services are intended to run outside the
+privileged kernel where practical. Rust helps express ownership in software; it
+does not by itself constrain DMA or prove hardware behavior.
+
+Embers is an original Rust `no_std` microkernel project targeting x86-64 and
+QEMU first. It is independent of **Emberglass OS**, a Linux-based desktop
+research project; the two do not currently share a working kernel.
+
+### Research starting points
+
+We draw on work such as [seL4 verification](https://sel4.systems/Research/publications.html)
+and [scheduling contexts](https://www.sel4.systems/Research/pdfs/scheduling-context-capabilities.pdf),
+[MIT xv6](https://pdos.csail.mit.edu/6.828/2020/xv6/book-riscv-rev1.pdf),
+[Converos](https://www.usenix.org/conference/atc25/presentation/tang),
+[XSched](https://www.usenix.org/conference/osdi25/presentation/shen-weihang),
+and [Sereno](https://www.usenix.org/conference/osdi26/presentation/xin).
+These systems address different questions and environments; their results are
+references for our experiments, not results achieved by Embers.
 
 ## Where the code actually stands
 
@@ -30,6 +70,8 @@ The default branch **boots a freestanding Rust `no_std` kernel in headless QEMU*
 | M03: CPU exceptions | Kernel GDT/TSS/IDT; deliberate #UD, #PF and #DF QEMU tests | [#27](https://github.com/bit-foundry-labs/embers-kernel/pull/27) |
 | M04: memory map | Validate Limine descriptors; bounded, unique physical-frame accounting | [#28](https://github.com/bit-foundry-labs/embers-kernel/pull/28) |
 | M05: frame ledger | Fixed-capacity symbolic owners, cross-owner rejection and **permanent quarantine** | [#29](https://github.com/bit-foundry-labs/embers-kernel/pull/29) |
+| M06e: transactional reservations | One BSP boot path couples frame-pool and registry bookkeeping | [#53](https://github.com/bit-foundry-labs/embers-kernel/pull/53) |
+| Paging research | Host-only supervisor leaf-entry encoding; no active mapping change | [#54](https://github.com/bit-foundry-labs/embers-kernel/pull/54) |
 | Proposed research | Capability and AI-aware resource policy architecture | [ADR #3](https://github.com/bit-foundry-labs/embers-kernel/pull/3), [policy model #6](https://github.com/bit-foundry-labs/embers-kernel/pull/6), not kernel features |
 
 **Not implemented:** kernel-owned page tables, hardware-enforced user/kernel isolation, ring-3 processes, syscalls, IPC, authenticated capability enforcement, DMA/IOMMU quiescence or a deterministic multitasking scheduler. Frame ledger owner IDs are internal demonstration labels, not secure process identities.
@@ -79,7 +121,7 @@ A useful first contribution is a narrow, verifiable improvement, not a sweeping 
 
 - **First contribution, documentation:** [Reproduce the Rust QEMU boot on a fresh Ubuntu/WSL machine](https://github.com/bit-foundry-labs/embers-kernel/issues/8).
 - **First contribution, code review:** [Document the early-boot `unsafe` contracts](https://github.com/bit-foundry-labs/embers-kernel/issues/33).
-- **Intermediate, architecture:** [Measure the Rust kernel's tested x86-64 CPU baseline](https://github.com/bit-foundry-labs/embers-kernel/issues/9).
+- **Architecture:** Review the [proposed page-table transition contract](docs/PAGING_TRANSITION_V1.md) and its unresolved assumptions.
 
 For deeper research, see the [capability threat-model task](https://github.com/bit-foundry-labs/embers-kernel/issues/12) and the [contributor-launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24).
 
