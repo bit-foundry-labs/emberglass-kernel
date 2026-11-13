@@ -76,14 +76,26 @@ impl Hierarchy {
 mod tests {
     use super::*;
 
-    const EMPTY: Entry = Entry { target: 0, present: false, writable: false, user: false };
+    const EMPTY: Entry = Entry {
+        target: 0,
+        present: false,
+        writable: false,
+        user: false,
+    };
 
     fn hierarchy(va: u64) -> Hierarchy {
-        let mut h = Hierarchy { table_addresses: [0x1000, 0x2000, 0x3000, 0x4000], tables: [[EMPTY; 512]; 4] };
+        let mut h = Hierarchy {
+            table_addresses: [0x1000, 0x2000, 0x3000, 0x4000],
+            tables: [[EMPTY; 512]; 4],
+        };
         let ix = indices(va).unwrap();
         for level in 0..4 {
             h.tables[level][ix[level]] = Entry {
-                target: if level == 3 { 0x9000 } else { h.table_addresses[level + 1] },
+                target: if level == 3 {
+                    0x9000
+                } else {
+                    h.table_addresses[level + 1]
+                },
                 present: true,
                 writable: true,
                 user: true,
@@ -110,10 +122,16 @@ mod tests {
         assert_eq!(h.translate(va, false, false), Err(WalkError::MissingEntry));
         h = hierarchy(va);
         h.tables[1][ix[1]].target = 0x5000;
-        assert_eq!(h.translate(va, false, false), Err(WalkError::InvalidTableAddress));
+        assert_eq!(
+            h.translate(va, false, false),
+            Err(WalkError::InvalidTableAddress)
+        );
         h = hierarchy(va);
         h.tables[3][ix[3]].target = 0x9001;
-        assert_eq!(h.translate(va, false, false), Err(WalkError::InvalidLeafAddress));
+        assert_eq!(
+            h.translate(va, false, false),
+            Err(WalkError::InvalidLeafAddress)
+        );
     }
 
     #[test]
