@@ -186,6 +186,18 @@ mod tests {
     }
 
     #[test]
+    fn immediate_reuse_after_revoke_has_a_counterexample() {
+        let mut b = Buffer::new();
+        b.submit().unwrap();
+        b.revoke().unwrap();
+        // A hypothetical implementation that reuses immediately is unsafe:
+        // the simulated device may still access the buffer.
+        let flawed_reusable = b.state == State::Draining;
+        assert!(flawed_reusable && b.device_may_access);
+        assert_eq!(b.reclaim(), Err(Error::NotQuiescent));
+    }
+
+    #[test]
     fn generation_exhaustion_fails_closed() {
         let mut b = Buffer::new();
         b.generation = u64::MAX;
