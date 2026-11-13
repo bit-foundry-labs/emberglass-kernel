@@ -68,6 +68,7 @@ jobs:
           assert "ADDRESS: Limine HHDM and executable bases validated" in serial
           for field in ("HHDM offset", "executable physical base", "executable virtual base"):
               assert re.search(rf"ADDRESS: {field} = 0x[0-9a-f]{{16}}", serial), field
+          assert "MEMORY: boot reservation retained after initialization" in serial
           assert "READY: Embers Rust no_std entry reached." in serial
           values = re.findall(
               r"MEMORY: frame claim [12] = 0x([0-9a-f]{16})", serial
