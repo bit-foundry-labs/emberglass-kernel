@@ -145,4 +145,18 @@ mod tests {
         h.tables[0][ix[0]].user = false;
         assert_eq!(h.translate(va, false, true), Err(WalkError::UserDenied));
     }
+    #[test]
+    fn every_level_must_be_present_and_permit_user_access() {
+        let va = 0x1234_5678_9abcu64;
+        let ix = indices(va).unwrap();
+        for level in 0..4 {
+            let mut h = hierarchy(va);
+            h.tables[level][ix[level]].present = false;
+            assert_eq!(h.translate(va, false, false), Err(WalkError::MissingEntry));
+            h = hierarchy(va);
+            h.tables[level][ix[level]].user = false;
+            assert_eq!(h.translate(va, false, true), Err(WalkError::UserDenied));
+        }
+    }
+
 }
