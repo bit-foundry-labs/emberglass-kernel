@@ -68,3 +68,12 @@ rust-frame-registry-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test tests/frame_registry_host.rs -o ../build/embers-frame-registry-tests
 	./build/embers-frame-registry-tests
+
+# Host-only abstract DMA lifecycle; does not interact with devices.
+.PHONY: rust-dma-model-test
+rust-dma-model-test:
+	mkdir -p build
+	cd rust-kernel && rustfmt --edition 2021 --check research/dma_lifecycle.rs
+	cd rust-kernel && clippy-driver --edition=2021 --test research/dma_lifecycle.rs -D warnings -o ../build/embers-dma-clippy
+	cd rust-kernel && rustc --edition=2021 --test research/dma_lifecycle.rs -o ../build/embers-dma-model-tests
+	./build/embers-dma-model-tests
