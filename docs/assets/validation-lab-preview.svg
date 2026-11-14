@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Embers Kernel Validation Lab</title>
+  <desc id="desc">A dark systems research dashboard preview with evidence, risks, protocol assumptions, and next safe implementation step.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0a0c0f"/><stop offset="1" stop-color="#172023"/></linearGradient>
+    <linearGradient id="ember" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ee6f36"/><stop offset="1" stop-color="#f7bb68"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <path d="M0 75H1200M0 147H1200M0 555H1200" stroke="#293236" stroke-width="1"/>
+  <rect x="52" y="43" width="11" height="11" fill="#ee6f36"/><text x="79" y="54" fill="#cdd5d5" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">EMBERS KERNEL</text>
+  <text x="52" y="121" fill="#f1f2ef" font-family="Arial, sans-serif" font-size="42" font-weight="700">Validation Lab</text>
+  <text x="52" y="180" fill="#94a1a1" font-family="Arial, sans-serif" font-size="18">A working map for evidence, assumptions, and the next safe kernel increment.</text>
+  <rect x="880" y="105" width="268" height="38" rx="19" fill="#1c2929" stroke="#46615d"/>
+  <circle cx="906" cy="124" r="6" fill="#9fd7b6" filter="url(#glow)"/><text x="922" y="130" fill="#c6dad1" font-family="Arial, sans-serif" font-size="14">LOCAL-FIRST · RESEARCH</text>
+  <g font-family="Arial, sans-serif">
+    <rect x="52" y="223" width="354" height="278" rx="12" fill="#101619" stroke="#344044"/>
+    <text x="78" y="262" fill="#91a09e" font-size="13" letter-spacing="1.4">VALIDATION SIGNALS</text>
+    <text x="78" y="302" fill="#f2f1ed" font-size="25" font-weight="700">Bootable QEMU</text>
+    <rect x="78" y="321" width="301" height="6" rx="3" fill="#283234"/><rect x="78" y="321" width="168" height="6" rx="3" fill="url(#ember)"/>
+    <text x="78" y="362" fill="#afbcba" font-size="16">CI evidence</text><text x="340" y="362" fill="#f5bc75" font-size="16" text-anchor="end">reviewed</text>
+    <path d="M78 388H380M78 428H380" stroke="#293437"/>
+    <text x="78" y="414" fill="#afbcba" font-size="16">Hardware/QEMU result</text><text x="380" y="414" fill="#d6dfdc" font-size="16" text-anchor="end">bounded</text>
+    <text x="78" y="454" fill="#afbcba" font-size="16">Planned ≠ validated</text><text x="380" y="454" fill="#ee8b52" font-size="16" text-anchor="end">tracked</text>
+  </g>
+  <g font-family="Arial, sans-serif">
+    <rect x="430" y="223" width="336" height="278" rx="12" fill="#101619" stroke="#344044"/>
+    <text x="456" y="262" fill="#91a09e" font-size="13" letter-spacing="1.4">OPEN PROTOCOL QUESTIONS</text>
+    <circle cx="462" cy="301" r="5" fill="#f1a553"/><text x="478" y="307" fill="#e8ece8" font-size="17">IPC v1 guarantees</text>
+    <circle cx="462" cy="348" r="5" fill="#f1a553"/><text x="478" y="354" fill="#e8ece8" font-size="17">Paging transition rules</text>
+    <circle cx="462" cy="395" r="5" fill="#e96845"/><text x="478" y="401" fill="#e8ece8" font-size="17">DMA quiescence boundary</text>
+    <path d="M456 431H740" stroke="#293437"/>
+    <text x="456" y="462" fill="#8fa19d" font-size="15">Assumptions stay provisional until</text>
+    <text x="456" y="483" fill="#8fa19d" font-size="15">code, tests, and review agree.</text>
+  </g>
+  <g font-family="Arial, sans-serif">
+    <rect x="790" y="223" width="358" height="278" rx="12" fill="#101619" stroke="#344044"/>
+    <text x="816" y="262" fill="#91a09e" font-size="13" letter-spacing="1.4">NEXT SAFE STEP</text>
+    <text x="816" y="307" fill="#f2f1ed" font-size="24" font-weight="700">M06b: hardware</text>
+    <text x="816" y="338" fill="#f2f1ed" font-size="24" font-weight="700">paging validation</text>
+    <rect x="816" y="372" width="292" height="1" fill="#3a4646"/>
+    <text x="816" y="406" fill="#adc0bc" font-size="16">Connect task → code → tests → checks</text>
+    <text x="816" y="435" fill="#adc0bc" font-size="16">Record risks before advancing</text>
+    <rect x="816" y="456" width="178" height="27" rx="13.5" fill="#2c201a"/><text x="835" y="475" fill="#ffc184" font-size="13" letter-spacing="1">RESUME-READY</text>
+  </g>
+  <text x="52" y="591" fill="#f5bc75" font-family="Arial, sans-serif" font-size="16">OPEN THE LIVE VALIDATION LAB →</text>
+</svg>
