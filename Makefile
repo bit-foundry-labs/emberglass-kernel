@@ -26,6 +26,7 @@ rust-memory-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test src/memory.rs -o ../build/embers-memory-host-tests
 	./build/embers-memory-host-tests
+	python3 scripts/check_pool_construction.py
 
 # Host-only ownership-ledger tests using the pure no_std Rust modules.
 .PHONY: rust-ledger-test
@@ -68,7 +69,6 @@ rust-frame-registry-test:
 	mkdir -p build
 	cd rust-kernel && rustc --edition=2021 --test tests/frame_registry_host.rs -o ../build/embers-frame-registry-tests
 	./build/embers-frame-registry-tests
-
 # Host-only page-entry and page-walk research; no hardware mappings.
 .PHONY: rust-paging-research-test
 rust-paging-research-test:
@@ -79,3 +79,4 @@ rust-paging-research-test:
 	./build/embers-page-walk-tests
 	cd rust-kernel && rustc --edition=2021 --test tests/page_research_integration.rs -o ../build/embers-page-integration-tests
 	./build/embers-page-integration-tests
+
