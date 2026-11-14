@@ -79,4 +79,3 @@ rust-paging-research-test:
 	./build/embers-page-walk-tests
 	cd rust-kernel && rustc --edition=2021 --test tests/page_research_integration.rs -o ../build/embers-page-integration-tests
 	./build/embers-page-integration-tests
-
