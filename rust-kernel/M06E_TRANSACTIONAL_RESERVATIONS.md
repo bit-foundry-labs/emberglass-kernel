@@ -8,9 +8,10 @@
 The first normal boot diagnostic request reserves two pages through this path.
 The reservation is written to the registry exactly once, and the same path
 feeds optional M05 ownership smoke by lending the allocator's pool. The allocator
-is returned to `kernel_entry`, which checks that the initial record is present.
-The kernel then halts; future runtime code must explicitly carry this owner forward.
-This is not a global allocator or a hardware ownership guarantee.
+is returned to `kernel_entry` and moved into `KernelState`, which is passed to
+`run_kernel`. The initial record is checked after this handoff. The kernel then
+halts; future execution must continue to retain and pass this state. This is not
+a global allocator, a synchronization contract, or hardware ownership.
 
 ## Failure atomicity contract
 

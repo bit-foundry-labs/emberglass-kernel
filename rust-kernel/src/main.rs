@@ -22,6 +22,7 @@ mod boot_pool_gate;
 #[cfg(feature = "boot-ownership-smoke")]
 mod frame_ledger;
 mod frame_registry;
+mod kernel_state;
 mod memory;
 mod paging_mode;
 mod serial;
@@ -153,8 +154,12 @@ pub extern "C" fn kernel_entry() -> ! {
             halt_forever()
         }
     }
-    let allocator = check_boot_memory();
-    if allocator.reservation(0).is_none() {
+    let state = kernel_state::KernelState::new(check_boot_memory());
+    run_kernel(state)
+}
+
+fn run_kernel(state: kernel_state::KernelState<16>) -> ! {
+    if state.reservation(0).is_none() {
         serial_write("ERROR: boot reservation missing after initialization\n");
         halt_forever();
     }
@@ -226,6 +231,15 @@ fn check_boot_memory() -> frame_registry::TransactionalFrameAllocator<16> {
             halt_forever()
         }
     };
+    // Exercise the actual boot issuance path before handing the pool onward.
+    // This gate does not prevent independently constructed pools.
+    if !matches!(
+        boot_memory::initial_frame_pool(),
+        Err(boot_memory::BootMapError::AlreadyIssued)
+    ) {
+        serial_write("ERROR: second boot frame pool issuance was not rejected\n");
+        halt_forever();
+    }
     // The initialized allocator is returned to the boot owner below.
     #[allow(unused_mut)] // Mutable only when the optional ownership smoke test is enabled.
     let mut allocator =
