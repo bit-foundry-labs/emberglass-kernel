@@ -8,6 +8,12 @@ We're investigating what the kernel should control when applications and AI agen
 
 [Contribute](CONTRIBUTING.md) · [Research roadmap](docs/CONTRIBUTOR_ROADMAP.md) · [Open issues](https://github.com/bit-foundry-labs/embers-kernel/issues) · [Contributor launch milestone](https://github.com/bit-foundry-labs/embers-kernel/issues/24)
 
+## Validation Lab
+
+[![Preview of the Embers Kernel Validation Lab](docs/assets/validation-lab-preview.svg)](https://embers-kernel-validation-lab.brittneyleighb.chatgpt.site)
+
+[Open the Embers Kernel Validation Lab](https://embers-kernel-validation-lab.brittneyleighb.chatgpt.site) to connect research questions, architectural decisions, protocol assumptions, tasks, code, CI evidence, QEMU results, risks, and the next smallest safe implementation step. The preview is a navigation aid, not a claim that pending hardware or protocol decisions are settled.
+
 ## The engineering idea
 
 **Keep enforcement deterministic; keep intelligence outside the trusted kernel.**
