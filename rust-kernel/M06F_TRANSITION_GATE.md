@@ -16,13 +16,14 @@ not an implementation in this change. The new gate is therefore isolated at
 connected to the kernel boot path and must not be described as a hardware
 transition guarantee.
 
-Open drafts #55 and #56 add host-only page-entry/table/walk models, while #59
-explores carrying frame bookkeeping through kernel state. This change does not
-depend on or copy those drafts: the gate builds no page tables and treats
-construction and stack/mapping proof as blocked until authoritative APIs exist.
-The existing range registry is used only to revalidate reservation values;
-this is not proof that arbitrary caller-supplied records represent unique
-physical ownership.
+PR #55 was closed as superseded; PR #56's host-only leaf-table and four-level
+walk models were merged into `main` as `8da8292`. PRs #59 and #60 also merged:
+`KernelState` retains the boot allocator, and a one-shot permit restricts
+safe-Rust production pool issuance. None of these changes proves exclusive
+physical-memory ownership, page-table mappings, or stack survival. This gate
+does not construct page tables and treats construction and stack/mapping evidence
+as blockers until authoritative APIs exist. The range registry only revalidates
+caller-supplied numeric records; it does not authenticate physical authority.
 
 ## Invariant and failure behavior
 
@@ -60,10 +61,10 @@ Run `make rust-transition-gate-test` for the focused host test. The existing
 remain regression gates. These tests do not demonstrate a real CR3 transition;
 there is no transition feature for QEMU to exercise yet.
 
-Recorded local results: `make rust-transition-gate-test` passed 42 tests;
-`make rust-paging-mode-test` passed 5; `make rust-provenance-test` passed 21;
-`make rust-frame-registry-test` passed 24; `make rust-check` passed the release
-build and ELF-layout check; and release Clippy passed with warnings denied.
-`cargo fmt --all -- --check` and the explicit research-module rustfmt check are
-also required. QEMU and ISO tools are unavailable in the local environment, so
-these results are not a substitute for the existing QEMU CI on the exact head.
+The Copilot agent reported local runs on its earlier head: 42 tests in
+`make rust-transition-gate-test`, 5 paging-mode tests, 21 provenance tests,
+24 frame-registry tests, release build/ELF inspection, and Clippy. These are
+agent-reported results, not independent CI verification. The integrated branch
+must pass the current required GitHub workflows, including QEMU checks, after a
+maintainer authorizes execution. Those regressions test normal boot behavior,
+not a real `CR3` transition.
