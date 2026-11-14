@@ -1,6 +1,12 @@
 # Boot allocator handoff contract: proposal
 
-Status: design only. No allocator is accessible to a future runtime yet.
+Status: partially implemented boot-time handoff, with unresolved hardware authority. As of
+`main` commit `ab2d36d` (PRs #59 and #60), the BSP moves the
+`TransactionalFrameAllocator` into `KernelState` and then into `run_kernel`.
+The kernel still halts without a general runtime allocator or a page-table builder.
+A single-production-issuer permit restricts safe Rust pool construction in this
+kernel image; it does not prove exclusive access to physical frames, mappings,
+or devices.
 
 - One bootstrap owner receives the validated pool and reservation registry
   together. The pool must not be reconstructed for the same physical range.
@@ -16,7 +22,14 @@ Status: design only. No allocator is accessible to a future runtime yet.
 - Device DMA, IOMMU ownership, reclaim, and real caller authentication require
   separate designs. No isolation or exclusive physical ownership is established.
 
-Acceptance evidence for a future implementation: initialize the owner, move it
-into runtime state, allocate another run through that same owner, inspect both
-records, and show that a second issuer is rejected. Add failure-atomic tests and
-QEMU observations; host tests alone do not establish hardware protection.
+Current evidence: host tests exercise moving the owner, retaining the initial
+reservation and making a disjoint subsequent reservation. Production pool
+construction uses a one-shot, non-cloneable permit; compiler-negative tests
+reject a hidden constructor, cloning and use after move. Existing QEMU boot
+regressions passed for PRs #59 and #60 on their tested heads. None of this
+validates exclusive physical-memory access or new page-table mappings.
+
+Future acceptance work: reserve and initialize actual table/transition-stack
+frames through the retained owner, prove the live mapping and lifetime contract,
+verify no `CR3` writes on failed preparation, and collect gated QEMU observations.
+The kernel must not treat host-model tests as hardware protection evidence.
