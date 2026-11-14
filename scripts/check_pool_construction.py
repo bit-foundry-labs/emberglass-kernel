@@ -15,6 +15,8 @@ with tempfile.TemporaryDirectory() as directory:
         ("control", "fn main() { let _ = memory::claim_boot_pool_permit(); }", None),
         ("selector", "fn main() { let _ = memory::choose_pool(&[], 1); }", "E0425"),
         ("permit", "fn main() { let _ = memory::BootPoolPermit { _private: () }; }", "E0451"),
+        ("clone", "fn main() { let p = memory::claim_boot_pool_permit().unwrap(); let _ = p.clone(); }", "E0599"),
+        ("reuse", "fn main() { let p = memory::claim_boot_pool_permit().unwrap(); let _ = memory::select_boot_pool(p, &[], 1); let _ = memory::select_boot_pool(p, &[], 1); }", "E0382"),
     ]
     for name, body, expected in cases:
         source = temporary / (name + ".rs")
